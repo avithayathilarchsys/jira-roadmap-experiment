@@ -140,24 +140,24 @@ class handler(BaseHTTPRequestHandler):
                 f'{project_jql} AND labels = "2026-q1" '
                 f'ORDER BY updated DESC'
             ),
-            # Active tickets (any non-terminal status) updated in Q1 2026
-            # Broad exclusion covers both ADT and AAD workflows
+            # Active tickets — use statusCategory so this works across ADT + AAD
+            # regardless of what the individual statuses are named
             'ip': (
-                f'{project_jql} AND status NOT IN '
-                f'("Closed", "Done", "Backlog", "Grooming", "Cancelled", "Rejected") '
+                f'{project_jql} AND statusCategory = "In Progress" '
                 f'AND updated >= "2026-01-01" '
                 f'AND NOT labels = "2026-q1" ORDER BY updated DESC'
             ),
-            # Closed tickets within Q1 2026
+            # Done/closed tickets within Q1 2026 — statusCategory catches
+            # "Closed", "Done", "Resolved", etc. across all projects
             'closed': (
-                f'{project_jql} AND status = "Closed" '
+                f'{project_jql} AND statusCategory = "Done" '
                 f'AND updated >= "2026-01-01" AND updated <= "2026-03-31" '
                 f'AND NOT labels = "2026-q1" ORDER BY updated DESC'
             ),
             # Anything with a due date within Q1 (catch unassigned/backlog items)
             'due': (
                 f'{project_jql} AND duedate >= "2026-01-01" '
-                f'AND duedate <= "2026-03-31" AND status != "Closed" '
+                f'AND duedate <= "2026-03-31" AND statusCategory != "Done" '
                 f'AND NOT labels = "2026-q1" ORDER BY duedate ASC'
             ),
         }
