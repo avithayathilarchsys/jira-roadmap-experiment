@@ -65,6 +65,7 @@ def transform_issue(issue, domain):
 
     return {
         'key':            issue['key'],
+        'project':        issue['key'].split('-')[0],
         'summary':        f.get('summary', ''),
         'status':         status.get('name', 'Unknown'),
         'statusCategory': (status.get('statusCategory') or {}).get('key', 'new'),
@@ -94,10 +95,13 @@ class handler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
-        email   = os.environ.get('JIRA_EMAIL', '')
-        token   = os.environ.get('JIRA_TOKEN', '')
-        domain  = os.environ.get('JIRA_DOMAIN', 'archsys.atlassian.net')
-        project = os.environ.get('JIRA_PROJECT', 'ADT')
+        email    = os.environ.get('JIRA_EMAIL', '')
+        token    = os.environ.get('JIRA_TOKEN', '')
+        domain   = os.environ.get('JIRA_DOMAIN', 'archsys.atlassian.net')
+        # Support comma-separated list e.g. "ADT,AAD"
+        raw_projects = os.environ.get('JIRA_PROJECTS', os.environ.get('JIRA_PROJECT', 'ADT,AAD'))
+        project_list = [p.strip().strip('"') for p in raw_projects.split(',')]
+        project_jql  = 'project in (' + ', '.join(f'"{p}"' for p in project_list) + ')'
 
         if not email or not token:
             self._json(500, {'error': 'Missing JIRA_EMAIL or JIRA_TOKEN env vars'})
@@ -110,26 +114,26 @@ class handler(BaseHTTPRequestHandler):
         )
 
         queries = {
-            # All Q1-labelled tickets
+            # All Q1-labelled tickets across all projects
             'q1': (
-                f'project = "{project}" AND labels = "2026-q1" '
+                f'{project_jql} AND labels = "2026-q1" '
                 f'ORDER BY updated DESC'
             ),
             # In Progress tickets active in Q1 2026
             'ip': (
-                f'project = "{project}" AND status = "In Progress" '
+                f'{project_jql} AND status = "In Progress" '
                 f'AND updated >= "2026-01-01" '
                 f'AND NOT labels = "2026-q1" ORDER BY updated DESC'
             ),
             # Closed tickets within Q1 2026
             'closed': (
-                f'project = "{project}" AND status = "Closed" '
+                f'{project_jql} AND status = "Closed" '
                 f'AND updated >= "2026-01-01" AND updated <= "2026-03-31" '
                 f'AND NOT labels = "2026-q1" ORDER BY updated DESC'
             ),
             # Anything with a due date within Q1 (catch unassigned/backlog items)
             'due': (
-                f'project = "{project}" AND duedate >= "2026-01-01" '
+                f'{project_jql} AND duedate >= "2026-01-01" '
                 f'AND duedate <= "2026-03-31" AND status != "Closed" '
                 f'AND NOT labels = "2026-q1" ORDER BY duedate ASC'
             ),

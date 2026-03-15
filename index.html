@@ -23,6 +23,10 @@
       --s-rfe:      #0891b2;
       --s-done:     #16a34a;
       --s-q1:       #db2777;
+
+      /* Project colours */
+      --p-adt: #4f52c8;
+      --p-aad: #0891b2;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -227,6 +231,15 @@
     .epic-track { position: relative; }
     .epic-group.epic-collapsed .ticket-row { display: none; }
 
+    /* ── Project badge ────────────────────────────────────── */
+    .proj-badge {
+      font-size: 9px; font-weight: 800; letter-spacing: .4px;
+      padding: 1px 5px; border-radius: 3px; flex-shrink: 0;
+      color: #fff; text-transform: uppercase;
+    }
+    .proj-adt { background: var(--p-adt); }
+    .proj-aad { background: var(--p-aad); }
+
     /* ── Ticket row ───────────────────────────────────────── */
     .ticket-row {
       display: grid;
@@ -314,7 +327,7 @@
 <div id="top-chrome">
   <header>
     <h1>ADT <span>Roadmap</span></h1>
-    <div class="badge">Q1 2026 · <b id="ticket-count">—</b> tickets</div>
+    <div class="badge">ADT + AAD · Q1 2026 · <b id="ticket-count">—</b> tickets</div>
     <div class="spacer"></div>
     <div class="refresh-dot" title="Auto-refreshes every 5 min"></div>
     <span id="last-updated" style="margin-left:8px">Loading…</span>
@@ -327,6 +340,12 @@
       <div class="pill active" data-filter="all">All</div>
       <div class="pill" data-filter="q1">Q1 labelled</div>
       <div class="pill" data-filter="inprogress">In Progress</div>
+    </div>
+    <span style="margin-left:12px" class="filter-label">Project</span>
+    <div class="pill-group" id="project-pills">
+      <div class="pill active" data-project="all">All</div>
+      <div class="pill" data-project="ADT" style="border-left:3px solid var(--p-adt)">ADT</div>
+      <div class="pill" data-project="AAD" style="border-left:3px solid var(--p-aad)">AAD</div>
     </div>
     <span style="margin-left:12px" class="filter-label">Assignee</span>
     <div class="pill-group" id="assignee-pills"></div>
@@ -379,6 +398,7 @@ const AUTO_REFRESH_MS  = 5 * 60 * 1000;
 
 let allTickets      = [];
 let activeFilter    = 'all';
+let activeProject   = 'all';
 let hiddenAssignees = new Set();
 let timelineStart, timelineEnd;
 let refreshTimer;
@@ -391,6 +411,16 @@ const DATE_RANGES = {
   mar: { start: new Date('2026-03-01'), end: new Date('2026-03-31') },
 };
 let activeDateRange = DATE_RANGES.q1;
+
+// ── Project filter pills ──────────────────────────────────
+document.getElementById('project-pills').addEventListener('click', e => {
+  const pill = e.target.closest('.pill');
+  if (!pill) return;
+  document.querySelectorAll('#project-pills .pill').forEach(p => p.classList.remove('active'));
+  pill.classList.add('active');
+  activeProject = pill.dataset.project;
+  renderGantt();
+});
 
 // ── Date range pills ──────────────────────────────────────
 document.getElementById('range-pills').addEventListener('click', e => {
@@ -488,6 +518,7 @@ function buildAssigneePills() {
 // ── Filter logic ──────────────────────────────────────────
 function getFilteredTickets() {
   return allTickets.filter(t => {
+    if (activeProject !== 'all' && t.project !== activeProject)       return false;
     if (activeFilter === 'q1'         && !t.isQ1)                    return false;
     if (activeFilter === 'inprogress' && t.status !== 'In Progress')  return false;
     if (hiddenAssignees.has(t.assignee))                              return false;
@@ -764,8 +795,10 @@ function renderGantt() {
 
         const row = document.createElement('div');
         row.className = 'ticket-row';
+        const projClass = `proj-${(ticket.project||'').toLowerCase()}`;
         row.innerHTML = `
           <div class="ticket-label-cell">
+            <span class="proj-badge ${projClass}">${escHtml(ticket.project||'')}</span>
             <span class="ticket-summary" title="${escHtml(ticket.summary)}">${escHtml(ticket.summary)}</span>
             <span class="ticket-key">${ticket.key}</span>
           </div>
@@ -814,6 +847,7 @@ function showTooltip(e) {
     <div class="tt-key">${t.key}${t.isQ1 ? ' <span style="color:var(--s-q1)">● Q1</span>' : ''}</div>
     <div class="tt-title">${escHtml(t.summary)}</div>
     <div class="tt-meta">
+      <div class="tt-row"><span>Project</span><span class="tt-val"><span class="proj-badge proj-${(t.project||'').toLowerCase()}">${escHtml(t.project||'')}</span></span></div>
       <div class="tt-row"><span>Status</span><span class="tt-val"><span class="tt-sdot" style="background:${statusColor(t.status)}"></span>${t.status}</span></div>
       <div class="tt-row"><span>Type</span><span class="tt-val">${t.issuetype}</span></div>
       <div class="tt-row"><span>Priority</span><span class="tt-val">${t.priority}</span></div>
