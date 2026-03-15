@@ -259,6 +259,7 @@
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       text-decoration: none; min-width: 4px;
       transition: filter .15s, transform .15s;
+      z-index: 1;
     }
     .gantt-bar:hover {
       filter: brightness(1.2);
@@ -532,7 +533,7 @@ function renderGantt() {
 
   function makeTrackBg() {
     const el = document.createElement('div');
-    el.style.cssText = 'position:relative;width:100%;height:100%';
+    el.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:0';
     for (const m of months) {
       const line = document.createElement('div');
       line.className = 'grid-bg-line';
