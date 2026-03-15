@@ -632,8 +632,8 @@ function renderGantt() {
       row.className = 'ticket-row';
       row.innerHTML = `
         <div class="ticket-label-cell">
-          <span class="ticket-key">${ticket.key}</span>
           <span class="ticket-summary" title="${escHtml(ticket.summary)}">${escHtml(ticket.summary)}</span>
+          <span class="ticket-key">${ticket.key}</span>
         </div>
         <div class="ticket-track">
           <div class="track-today" style="left:${todayPct}%"></div>
@@ -641,7 +641,7 @@ function renderGantt() {
              class="gantt-bar ${barClass} ${q1outline}"
              style="left:${startPct}%; width:${widthPct}%"
              data-ticket='${JSON.stringify(ticket).replace(/'/g,"&#39;")}'
-          >${ticket.key}</a>
+          >${escHtml(ticket.summary)}</a>
         </div>
       `;
       group.appendChild(row);

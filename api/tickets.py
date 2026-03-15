@@ -92,21 +92,35 @@ class handler(BaseHTTPRequestHandler):
         )
 
         try:
-            q1_jql = f'project = "{project}" AND labels = "2026-q1" ORDER BY created ASC'
+            # Q1-labelled tickets (any status)
+            q1_jql = (
+                f'project = "{project}" AND labels = "2026-q1" '
+                f'ORDER BY updated DESC'
+            )
+            # In Progress tickets updated in Q1 2026 (catches everyone actively working)
             ip_jql = (
                 f'project = "{project}" AND status = "In Progress" '
-                f'AND NOT labels = "2026-q1" ORDER BY created ASC'
+                f'AND updated >= "2026-01-01" '
+                f'AND NOT labels = "2026-q1" ORDER BY updated DESC'
+            )
+            # Closed tickets within Q1 2026
+            closed_jql = (
+                f'project = "{project}" AND status = "Closed" '
+                f'AND updated >= "2026-01-01" AND updated <= "2026-03-31" '
+                f'AND NOT labels = "2026-q1" ORDER BY updated DESC'
             )
 
-            q1_data = fetch_jira(domain, auth, q1_jql, fields)
-            ip_data = fetch_jira(domain, auth, ip_jql, fields)
+            q1_data     = fetch_jira(domain, auth, q1_jql, fields)
+            ip_data     = fetch_jira(domain, auth, ip_jql, fields)
+            closed_data = fetch_jira(domain, auth, closed_jql, fields)
 
             seen    = set()
             tickets = []
-            # new /search/jql endpoint returns 'issues', same as old endpoint
-            q1_issues = q1_data.get('issues', [])
-            ip_issues = ip_data.get('issues', [])
-            for issue in q1_issues + ip_issues:
+            for issue in (
+                q1_data.get('issues', []) +
+                ip_data.get('issues', []) +
+                closed_data.get('issues', [])
+            ):
                 if issue['key'] not in seen:
                     seen.add(issue['key'])
                     tickets.append(transform_issue(issue, domain))
@@ -116,6 +130,7 @@ class handler(BaseHTTPRequestHandler):
                 'meta': {
                     'q1Count':         q1_data.get('total', 0),
                     'inProgressCount': ip_data.get('total', 0),
+                    'closedCount':     closed_data.get('total', 0),
                     'lastUpdated':     datetime.now(timezone.utc).isoformat(),
                 },
             })
