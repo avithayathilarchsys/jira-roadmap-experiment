@@ -12,20 +12,41 @@ import urllib.parse
 from datetime import datetime, timezone
 
 
-def fetch_jira(domain, auth, jql, fields, max_results=100):
-    """Fetch issues from Jira using the /search/jql endpoint."""
+def fetch_jira_page(domain, auth, jql, fields, start_at=0):
+    """Fetch one page (up to 100) of Jira issues."""
     params = urllib.parse.urlencode({
-        'jql': jql,
-        'maxResults': max_results,
-        'fields': fields,
+        'jql':        jql,
+        'maxResults': 100,
+        'startAt':    start_at,
+        'fields':     fields,
     })
     url = f'https://{domain}/rest/api/3/search/jql?{params}'
     req = urllib.request.Request(url, headers={
         'Authorization': f'Basic {auth}',
-        'Accept': 'application/json',
+        'Accept':        'application/json',
     })
     with urllib.request.urlopen(req, timeout=8) as resp:
         return json.loads(resp.read())
+
+
+def fetch_jira_all(domain, auth, jql, fields, cap=300):
+    """Fetch up to `cap` issues, paginating automatically."""
+    first   = fetch_jira_page(domain, auth, jql, fields, start_at=0)
+    total   = first.get('total', 0)
+    issues  = first.get('issues', [])
+
+    # Collect additional start positions needed
+    extra_starts = range(100, min(total, cap), 100)
+    if extra_starts:
+        with ThreadPoolExecutor(max_workers=len(extra_starts)) as ex:
+            futures = {
+                ex.submit(fetch_jira_page, domain, auth, jql, fields, s): s
+                for s in extra_starts
+            }
+            for fut in as_completed(futures):
+                issues.extend(fut.result().get('issues', []))
+
+    return {'issues': issues, 'total': total}
 
 
 def transform_issue(issue, domain):
@@ -142,11 +163,11 @@ class handler(BaseHTTPRequestHandler):
         }
 
         try:
-            # Run all 4 Jira queries in parallel to stay within Vercel's timeout
+            # Run all 4 Jira queries in parallel; each paginates up to 300 results
             results = {}
             with ThreadPoolExecutor(max_workers=4) as executor:
                 future_map = {
-                    executor.submit(fetch_jira, domain, auth, jql, fields): key
+                    executor.submit(fetch_jira_all, domain, auth, jql, fields): key
                     for key, jql in queries.items()
                 }
                 for future in as_completed(future_map):
