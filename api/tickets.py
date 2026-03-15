@@ -12,55 +12,40 @@ from datetime import datetime, timezone
 
 
 def fetch_jira(domain, auth, jql, fields, max_results=100):
+    """Fetch issues from Jira using JQL. No changelog expansion (keeps response fast)."""
     params = urllib.parse.urlencode({
         'jql': jql,
         'maxResults': max_results,
         'fields': fields,
-        'expand': 'changelog',
     })
     url = f'https://{domain}/rest/api/3/search?{params}'
     req = urllib.request.Request(url, headers={
         'Authorization': f'Basic {auth}',
         'Accept': 'application/json',
     })
-    with urllib.request.urlopen(req) as resp:
+    with urllib.request.urlopen(req, timeout=8) as resp:
         return json.loads(resp.read())
 
 
-def get_in_progress_date(changelog, created):
-    """Walk the changelog to find when the ticket moved to In Progress."""
-    if not changelog or 'histories' not in changelog:
-        return created
-    for history in reversed(changelog['histories']):
-        for item in history.get('items', []):
-            if (
-                item.get('field') == 'status'
-                and 'in progress' in (item.get('toString') or '').lower()
-            ):
-                return history['created']
-    return created
-
-
 def transform_issue(issue, domain):
-    f = issue['fields']
-    is_q1 = '2026-q1' in (f.get('labels') or [])
-    start_date = get_in_progress_date(issue.get('changelog'), f.get('created'))
+    f         = issue['fields']
+    is_q1     = '2026-q1' in (f.get('labels') or [])
+    assignee  = f.get('assignee') or {}
+    issuetype = f.get('issuetype') or {}
+    status    = f.get('status') or {}
+    priority  = f.get('priority') or {}
 
     sprints = f.get('customfield_10020') or []
-    sprint = next(
+    sprint  = next(
         (s for s in sprints if s.get('state') in ('active', 'future')), None
     )
 
+    # End date: explicit duedate → active sprint end → None (shown as ongoing)
     end_date = None
     if f.get('duedate'):
         end_date = f['duedate']
     elif sprint and sprint.get('endDate'):
         end_date = sprint['endDate'].split('T')[0]
-
-    assignee  = f.get('assignee') or {}
-    issuetype = f.get('issuetype') or {}
-    status    = f.get('status') or {}
-    priority  = f.get('priority') or {}
 
     return {
         'key':            issue['key'],
@@ -71,7 +56,7 @@ def transform_issue(issue, domain):
         'assigneeAvatar': (assignee.get('avatarUrls') or {}).get('48x48'),
         'created':        f.get('created'),
         'updated':        f.get('updated'),
-        'startDate':      start_date,
+        'startDate':      f.get('created'),   # use created as start (no changelog needed)
         'endDate':        end_date,
         'duedate':        f.get('duedate'),
         'labels':         f.get('labels') or [],
@@ -126,9 +111,9 @@ class handler(BaseHTTPRequestHandler):
             self._json(200, {
                 'tickets': tickets,
                 'meta': {
-                    'q1Count':          q1_data.get('total', 0),
-                    'inProgressCount':  ip_data.get('total', 0),
-                    'lastUpdated':      datetime.now(timezone.utc).isoformat(),
+                    'q1Count':         q1_data.get('total', 0),
+                    'inProgressCount': ip_data.get('total', 0),
+                    'lastUpdated':     datetime.now(timezone.utc).isoformat(),
                 },
             })
 
