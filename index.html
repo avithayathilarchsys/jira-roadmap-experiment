@@ -17,12 +17,10 @@
       --label-w:  220px;
 
       --s-open:     #94a3b8;
-      --s-progress: #3b82f6;
-      --s-review:   #7c3aed;
-      --s-qa:       #d97706;
-      --s-rfe:      #0891b2;
+      --s-progress: #f59e0b;
       --s-done:     #16a34a;
       --s-q1:       #db2777;
+      --s-overdue:  #ef4444;
 
       /* Project colours */
       --p-adt: #4f52c8;
@@ -286,10 +284,8 @@
     }
     .bar-open     { background: var(--s-open); }
     .bar-progress { background: var(--s-progress); }
-    .bar-review   { background: var(--s-review); }
-    .bar-qa       { background: var(--s-qa); }
-    .bar-rfe      { background: var(--s-rfe); }
     .bar-done     { background: var(--s-done); opacity: .6; }
+    .bar-overdue  { outline: 2px solid var(--s-overdue); outline-offset: -2px; }
     .bar-q1-outline { outline: 2px solid var(--s-q1); outline-offset: -2px; }
 
     .track-today-line {
@@ -372,10 +368,8 @@
     <span class="filter-label" style="margin-right:4px">Status:</span>
     <div class="legend-item"><div class="legend-dot" style="background:var(--s-open)"></div>Open</div>
     <div class="legend-item"><div class="legend-dot" style="background:var(--s-progress)"></div>In Progress</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--s-review)"></div>Review</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--s-qa)"></div>QA</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--s-rfe)"></div>Selected / RFE</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--s-done)"></div>Closed / Deployed</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--s-done)"></div>Done</div>
+    <div class="legend-item"><div class="legend-dot" style="background:transparent;outline:2px solid var(--s-overdue);outline-offset:-2px;border-radius:3px"></div>Overdue</div>
     <div class="legend-item" style="margin-left:6px">
       <div class="legend-dot" style="background:transparent;border:2px solid var(--s-q1);border-radius:3px"></div>Q1 label
     </div>
@@ -520,7 +514,7 @@ function getFilteredTickets() {
   return allTickets.filter(t => {
     if (activeProject !== 'all' && t.project !== activeProject)       return false;
     if (activeFilter === 'q1'         && !t.isQ1)                    return false;
-    if (activeFilter === 'inprogress' && statusClass(t.status) !== 'bar-progress') return false;
+    if (activeFilter === 'inprogress' && t.statusCategory !== 'indeterminate') return false;
     if (hiddenAssignees.has(t.assignee))                              return false;
     return true;
   });
@@ -557,26 +551,22 @@ function dateToPct(date, start, end) {
   return Math.max(0, Math.min(100, (new Date(date) - start) / total * 100));
 }
 
-function statusClass(s) {
+// Three states: done (green) · active/in-progress (yellow) · open/new (grey)
+// Uses Jira's statusCategory: "done" | "indeterminate" | "new"
+function statusClass(s, cat) {
+  if (cat === 'done')          return 'bar-done';
+  if (cat === 'indeterminate') return 'bar-progress';
+  // fallback for missing category: scan status name
   const v = (s || '').toLowerCase();
-  if (v.includes('progress'))    return 'bar-progress';
-  if (v.includes('review'))      return 'bar-review';
-  if (v === 'qa')                return 'bar-qa';
-  if (v.includes('ready'))       return 'bar-rfe';
-  if (v.includes('deployment'))  return 'bar-done';   // AAD: Awaiting Deployment
-  if (v.includes('selected'))    return 'bar-rfe';    // AAD: Selected for Development
   if (v === 'closed' || v === 'done') return 'bar-done';
-  return 'bar-open';
+  if (v === 'open' || v === 'to do' || v === 'backlog') return 'bar-open';
+  return 'bar-open'; // default: grey
 }
 
-function statusColor(s) {
+function statusColor(s, cat) {
+  if (cat === 'done')          return 'var(--s-done)';
+  if (cat === 'indeterminate') return 'var(--s-progress)';
   const v = (s || '').toLowerCase();
-  if (v.includes('progress'))    return 'var(--s-progress)';
-  if (v.includes('review'))      return 'var(--s-review)';
-  if (v === 'qa')                return 'var(--s-qa)';
-  if (v.includes('ready'))       return 'var(--s-rfe)';
-  if (v.includes('deployment'))  return 'var(--s-done)';   // AAD: Awaiting Deployment
-  if (v.includes('selected'))    return 'var(--s-rfe)';    // AAD: Selected for Development
   if (v === 'closed' || v === 'done') return 'var(--s-done)';
   return 'var(--s-open)';
 }
@@ -789,8 +779,11 @@ function renderGantt() {
         const widthPct = Math.max(0.4, endPct - startPct);
         const hasDefaultEnd = !ticket.endDate && ticket.status !== 'Closed';
 
-        const barClass   = statusClass(ticket.status);
-        const q1outline  = ticket.isQ1 ? 'bar-q1-outline' : '';
+        const today      = new Date(); today.setHours(0,0,0,0);
+        const isOverdue  = ticket.duedate && new Date(ticket.duedate) < today
+                           && ticket.statusCategory !== 'done';
+        const barClass   = statusClass(ticket.status, ticket.statusCategory);
+        const outlineClass = isOverdue ? 'bar-overdue' : (ticket.isQ1 ? 'bar-q1-outline' : '');
         const barStyle   = hasDefaultEnd
           ? `left:${startPct}%;width:${widthPct}%;opacity:.75;border-right:2px dashed rgba(255,255,255,.4)`
           : `left:${startPct}%;width:${widthPct}%`;
@@ -808,7 +801,7 @@ function renderGantt() {
           </div>
           <div class="ticket-track">
             <a href="${ticket.url}" target="_blank" rel="noopener"
-               class="gantt-bar ${barClass} ${q1outline}"
+               class="gantt-bar ${barClass} ${outlineClass}"
                style="${barStyle}"
                data-ticket='${safeData}'
             >${escHtml(ticket.summary)}</a>
@@ -852,7 +845,7 @@ function showTooltip(e) {
     <div class="tt-title">${escHtml(t.summary)}</div>
     <div class="tt-meta">
       <div class="tt-row"><span>Project</span><span class="tt-val"><span class="proj-badge proj-${(t.project||'').toLowerCase()}">${escHtml(t.project||'')}</span></span></div>
-      <div class="tt-row"><span>Status</span><span class="tt-val"><span class="tt-sdot" style="background:${statusColor(t.status)}"></span>${t.status}</span></div>
+      <div class="tt-row"><span>Status</span><span class="tt-val"><span class="tt-sdot" style="background:${statusColor(t.status, t.statusCategory)}"></span>${t.status}</span></div>
       <div class="tt-row"><span>Type</span><span class="tt-val">${t.issuetype}</span></div>
       <div class="tt-row"><span>Priority</span><span class="tt-val">${t.priority}</span></div>
       ${t.epicName ? `<div class="tt-row"><span>Epic</span><span class="tt-val">${escHtml(t.epicName)}</span></div>` : ''}
