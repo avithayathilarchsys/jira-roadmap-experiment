@@ -6,23 +6,23 @@
   <title>ADT Roadmap</title>
   <style>
     :root {
-      --bg:       #0f1117;
-      --surface:  #1a1d27;
-      --surface2: #22263a;
-      --border:   #2e3350;
-      --text:     #e2e8f0;
-      --muted:    #8892aa;
-      --accent:   #6366f1;
-      --today:    #f97316;
+      --bg:       #f5f7fa;
+      --surface:  #ffffff;
+      --surface2: #eef1f7;
+      --border:   #dde2ee;
+      --text:     #1e2235;
+      --muted:    #6b7694;
+      --accent:   #4f52c8;
+      --today:    #d95f10;
       --label-w:  220px;
 
-      --s-open:     #64748b;
+      --s-open:     #94a3b8;
       --s-progress: #3b82f6;
-      --s-review:   #8b5cf6;
-      --s-qa:       #f59e0b;
-      --s-rfe:      #06b6d4;
-      --s-done:     #22c55e;
-      --s-q1:       #ec4899;
+      --s-review:   #7c3aed;
+      --s-qa:       #d97706;
+      --s-rfe:      #0891b2;
+      --s-done:     #16a34a;
+      --s-q1:       #db2777;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -97,8 +97,8 @@
       font-size: 11px; font-weight: 500; padding: 3px 11px;
       transition: all .15s; user-select: none;
     }
-    .pill.active { border-color: var(--accent); color: #fff; background: rgba(99,102,241,.15); }
-    .pill:hover:not(.active) { border-color: #4b5280; color: var(--text); }
+    .pill.active { border-color: var(--accent); color: var(--accent); background: rgba(79,82,200,.1); font-weight: 700; }
+    .pill:hover:not(.active) { border-color: var(--muted); color: var(--text); }
 
     .legend {
       display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
@@ -211,9 +211,13 @@
       background: rgba(99,102,241,.04);
     }
     .epic-label-cell {
-      display: flex; align-items: center; gap: 6px;
-      padding: 6px 12px 6px 20px;
+      display: flex; align-items: center; gap: 5px;
+      padding: 6px 10px 6px 14px;
       border-right: 1px solid var(--border);
+    }
+    .epic-chevron {
+      font-size: 10px; color: var(--muted); flex-shrink: 0;
+      transition: transform .2s; display: inline-block;
     }
     .epic-diamond { color: var(--accent); font-size: 9px; flex-shrink: 0; }
     .epic-name {
@@ -221,6 +225,7 @@
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
     .epic-track { position: relative; }
+    .epic-group.epic-collapsed .ticket-row { display: none; }
 
     /* ── Ticket row ───────────────────────────────────────── */
     .ticket-row {
@@ -282,17 +287,17 @@
 
     /* ── Tooltip ──────────────────────────────────────────── */
     #tooltip {
-      position: fixed; background: var(--surface2);
-      border: 1px solid var(--border); border-radius: 8px;
+      position: fixed; background: #1e2235;
+      border: 1px solid #2e3350; border-radius: 8px;
       padding: 10px 14px; pointer-events: none; z-index: 9999;
-      max-width: 320px; box-shadow: 0 8px 24px rgba(0,0,0,.5);
-      display: none;
+      max-width: 320px; box-shadow: 0 8px 32px rgba(0,0,0,.25);
+      display: none; color: #e2e8f0;
     }
-    .tt-key   { font-size: 11px; font-weight: 700; color: var(--accent); margin-bottom: 2px; }
-    .tt-title { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 7px; line-height: 1.4; }
-    .tt-meta  { font-size: 11px; color: var(--muted); display: flex; flex-direction: column; gap: 3px; }
+    .tt-key   { font-size: 11px; font-weight: 700; color: #818cf8; margin-bottom: 2px; }
+    .tt-title { font-size: 12px; font-weight: 600; color: #f1f5f9; margin-bottom: 7px; line-height: 1.4; }
+    .tt-meta  { font-size: 11px; color: #94a3b8; display: flex; flex-direction: column; gap: 3px; }
     .tt-row   { display: flex; justify-content: space-between; gap: 16px; }
-    .tt-val   { color: var(--text); }
+    .tt-val   { color: #e2e8f0; }
     .tt-sdot  { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
 
     /* ── Misc ─────────────────────────────────────────────── */
@@ -640,17 +645,48 @@ function renderGantt() {
       if (ek !== '__none__') {
         const er = document.createElement('div');
         er.className = 'epic-row';
+        er.style.cursor = 'pointer';
 
         const elc = document.createElement('div');
         elc.className = 'epic-label-cell';
-        elc.innerHTML = `<span class="epic-diamond">◆</span><span class="epic-name" title="${escHtml(epicName || ek)}">${escHtml(epicName || ek)}</span>`;
+        elc.innerHTML = `
+          <span class="epic-chevron">▾</span>
+          <span class="epic-diamond">◆</span>
+          <span class="epic-name" title="${escHtml(epicName || ek)}">${escHtml(epicName || ek)}</span>
+          <span class="assignee-count" style="margin-left:auto">${eTix.length}</span>
+        `;
         er.appendChild(elc);
+
+        // Epic bar spanning min start → max end of all tickets in epic
+        const epicStartMs = Math.min(...eTix.map(t => new Date(t.startDate || t.created).getTime()));
+        const epicEndMs   = Math.max(...eTix.map(t => resolveEndDate(t).getTime()));
+        const eSPct = dateToPct(new Date(epicStartMs), timelineStart, timelineEnd);
+        const eEPct = dateToPct(new Date(epicEndMs),   timelineStart, timelineEnd);
+        const eWPct = Math.max(0.4, eEPct - eSPct);
 
         const etc = document.createElement('div');
         etc.className = 'epic-track';
         etc.style.position = 'relative';
         etc.appendChild(makeTrackBg());
+
+        const epicBar = document.createElement('div');
+        epicBar.style.cssText = `
+          position:absolute; top:50%; transform:translateY(-50%);
+          height:14px; border-radius:3px; z-index:1;
+          background:var(--accent); opacity:.25;
+          left:${eSPct}%; width:${eWPct}%;
+          pointer-events:none;
+        `;
+        etc.appendChild(epicBar);
         er.appendChild(etc);
+
+        // Toggle collapse on click
+        er.addEventListener('click', () => {
+          epicGroup.classList.toggle('epic-collapsed');
+          er.querySelector('.epic-chevron').style.transform =
+            epicGroup.classList.contains('epic-collapsed') ? 'rotate(-90deg)' : '';
+        });
+
         epicGroup.appendChild(er);
       }
 
