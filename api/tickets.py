@@ -133,38 +133,41 @@ class handler(BaseHTTPRequestHandler):
             'duedate,labels,issuetype,priority,customfield_10020,parent'
         )
 
+        # NOTE: Jira JQL "NOT labels = X" silently drops issues with NO labels set.
+        # Must use "(labels != X OR labels is EMPTY)" to include unlabelled tickets.
+        not_q1 = '(labels != "2026-q1" OR labels is EMPTY)'
+        closed_suffix = (
+            f'AND statusCategory = "Done" '
+            f'AND updated >= "2026-01-01" AND updated <= "2026-03-31" '
+            f'AND {not_q1} ORDER BY updated DESC'
+        )
         queries = {
             # All Q1-labelled tickets across all projects
             'q1': (
                 f'{project_jql} AND labels = "2026-q1" '
                 f'ORDER BY updated DESC'
             ),
-            # Active tickets — use statusCategory so this works across ADT + AAD
-            # regardless of what the individual statuses are named
+            # Active tickets — statusCategory works across ADT + AAD workflows
             'ip': (
                 f'{project_jql} AND statusCategory = "In Progress" '
                 f'AND updated >= "2026-01-01" '
-                f'AND NOT labels = "2026-q1" ORDER BY updated DESC'
+                f'AND {not_q1} ORDER BY updated DESC'
             ),
-            # Done/closed tickets within Q1 2026 — statusCategory catches
-            # "Closed", "Done", "Resolved", etc. across all projects
-            'closed': (
-                f'{project_jql} AND statusCategory = "Done" '
-                f'AND updated >= "2026-01-01" AND updated <= "2026-03-31" '
-                f'AND NOT labels = "2026-q1" ORDER BY updated DESC'
-            ),
-            # Anything with a due date within Q1 (catch unassigned/backlog items)
+            # Anything with a due date within Q1
             'due': (
                 f'{project_jql} AND duedate >= "2026-01-01" '
                 f'AND duedate <= "2026-03-31" AND statusCategory != "Done" '
-                f'AND NOT labels = "2026-q1" ORDER BY duedate ASC'
+                f'AND {not_q1} ORDER BY duedate ASC'
             ),
         }
+        # Split closed query per-project so each gets its own 300-item budget.
+        for proj in project_list:
+            queries[f'closed_{proj}'] = f'project = "{proj}" {closed_suffix}'
 
         try:
-            # Run all 4 Jira queries in parallel; each paginates up to 300 results
+            # Run all queries in parallel; each paginates up to 300 results
             results = {}
-            with ThreadPoolExecutor(max_workers=4) as executor:
+            with ThreadPoolExecutor(max_workers=len(queries)) as executor:
                 future_map = {
                     executor.submit(fetch_jira_all, domain, auth, jql, fields): key
                     for key, jql in queries.items()
@@ -174,18 +177,22 @@ class handler(BaseHTTPRequestHandler):
 
             seen    = set()
             tickets = []
-            for key in ('q1', 'ip', 'due', 'closed'):
+            closed_keys = [k for k in results if k.startswith('closed_')]
+            for key in ['q1', 'ip', 'due'] + closed_keys:
                 for issue in results.get(key, {}).get('issues', []):
                     if issue['key'] not in seen:
                         seen.add(issue['key'])
                         tickets.append(transform_issue(issue, domain))
 
+            closed_count = sum(
+                results.get(k, {}).get('total', 0) for k in closed_keys
+            )
             self._json(200, {
                 'tickets': tickets,
                 'meta': {
                     'q1Count':         results.get('q1', {}).get('total', 0),
                     'inProgressCount': results.get('ip', {}).get('total', 0),
-                    'closedCount':     results.get('closed', {}).get('total', 0),
+                    'closedCount':     closed_count,
                     'dueCount':        results.get('due', {}).get('total', 0),
                     'lastUpdated':     datetime.now(timezone.utc).isoformat(),
                 },
