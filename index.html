@@ -332,6 +332,23 @@
     <div class="pill-group" id="assignee-pills"></div>
   </div>
 
+  <div class="filters" style="gap:8px">
+    <span class="filter-label">Date range</span>
+    <div class="pill-group" id="range-pills">
+      <div class="pill active" data-range="q1">All Q1</div>
+      <div class="pill" data-range="jan">January</div>
+      <div class="pill" data-range="feb">February</div>
+      <div class="pill" data-range="mar">March</div>
+      <div class="pill" data-range="custom">Custom</div>
+    </div>
+    <div id="custom-range" style="display:none;align-items:center;gap:6px;margin-left:4px">
+      <input type="date" id="range-from" style="font-size:11px;padding:3px 7px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);cursor:pointer">
+      <span style="color:var(--muted);font-size:11px">→</span>
+      <input type="date" id="range-to"   style="font-size:11px;padding:3px 7px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);cursor:pointer">
+      <button onclick="applyCustomRange()" style="padding:3px 10px;font-size:11px">Apply</button>
+    </div>
+  </div>
+
   <div class="legend">
     <span class="filter-label" style="margin-right:4px">Status:</span>
     <div class="legend-item"><div class="legend-dot" style="background:var(--s-open)"></div>Open</div>
@@ -360,11 +377,42 @@
 const API_URL          = '/api/tickets';
 const AUTO_REFRESH_MS  = 5 * 60 * 1000;
 
-let allTickets    = [];
-let activeFilter  = 'all';
+let allTickets      = [];
+let activeFilter    = 'all';
 let hiddenAssignees = new Set();
 let timelineStart, timelineEnd;
 let refreshTimer;
+
+// Date range: { start: Date, end: Date } — null means auto from data
+const DATE_RANGES = {
+  q1:  { start: new Date('2026-01-01'), end: new Date('2026-03-31') },
+  jan: { start: new Date('2026-01-01'), end: new Date('2026-01-31') },
+  feb: { start: new Date('2026-02-01'), end: new Date('2026-02-28') },
+  mar: { start: new Date('2026-03-01'), end: new Date('2026-03-31') },
+};
+let activeDateRange = DATE_RANGES.q1;
+
+// ── Date range pills ──────────────────────────────────────
+document.getElementById('range-pills').addEventListener('click', e => {
+  const pill = e.target.closest('.pill');
+  if (!pill) return;
+  document.querySelectorAll('#range-pills .pill').forEach(p => p.classList.remove('active'));
+  pill.classList.add('active');
+  const key = pill.dataset.range;
+  document.getElementById('custom-range').style.display = key === 'custom' ? 'flex' : 'none';
+  if (key !== 'custom') {
+    activeDateRange = DATE_RANGES[key];
+    renderGantt();
+  }
+});
+
+function applyCustomRange() {
+  const from = document.getElementById('range-from').value;
+  const to   = document.getElementById('range-to').value;
+  if (!from || !to) return;
+  activeDateRange = { start: new Date(from), end: new Date(to) };
+  renderGantt();
+}
 
 // ── Working days helper ───────────────────────────────────
 function addWorkingDays(fromDate, days) {
@@ -449,11 +497,15 @@ function getFilteredTickets() {
 
 // ── Timeline helpers ──────────────────────────────────────
 function computeTimeline(tickets) {
+  // If a date range is selected, use it directly
+  if (activeDateRange) {
+    return { start: new Date(activeDateRange.start), end: new Date(activeDateRange.end) };
+  }
+  // Fallback: auto-fit to data
   const today = new Date();
   let min = new Date(today); min.setDate(min.getDate() - 14);
-  let max = new Date('2026-03-31');                        // end of Q1
+  let max = new Date('2026-03-31');
   if (today > max) { max = new Date(today); max.setDate(max.getDate() + 30); }
-
   for (const t of tickets) {
     const s = new Date(t.startDate || t.created);
     if (s < min) min = s;
@@ -679,6 +731,10 @@ function renderGantt() {
         `;
         etc.appendChild(epicBar);
         er.appendChild(etc);
+
+        // Collapsed by default
+        epicGroup.classList.add('epic-collapsed');
+        er.querySelector('.epic-chevron').style.transform = 'rotate(-90deg)';
 
         // Toggle collapse on click
         er.addEventListener('click', () => {
