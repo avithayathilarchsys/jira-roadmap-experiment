@@ -12,41 +12,40 @@ import urllib.parse
 from datetime import datetime, timezone
 
 
-def fetch_jira_page(domain, auth, jql, fields, start_at=0):
-    """Fetch one page (up to 100) of Jira issues."""
-    params = urllib.parse.urlencode({
-        'jql':        jql,
-        'maxResults': 100,
-        'startAt':    start_at,
-        'fields':     fields,
-    })
-    url = f'https://{domain}/rest/api/3/search/jql?{params}'
-    req = urllib.request.Request(url, headers={
-        'Authorization': f'Basic {auth}',
-        'Accept':        'application/json',
-    })
-    with urllib.request.urlopen(req, timeout=8) as resp:
-        return json.loads(resp.read())
-
-
 def fetch_jira_all(domain, auth, jql, fields, cap=300):
-    """Fetch up to `cap` issues, paginating automatically."""
-    first   = fetch_jira_page(domain, auth, jql, fields, start_at=0)
-    total   = first.get('total', 0)
-    issues  = first.get('issues', [])
+    """Fetch up to `cap` issues, paginating until Jira returns a short page."""
+    all_issues = []
+    start_at   = 0
 
-    # Collect additional start positions needed
-    extra_starts = range(100, min(total, cap), 100)
-    if extra_starts:
-        with ThreadPoolExecutor(max_workers=len(extra_starts)) as ex:
-            futures = {
-                ex.submit(fetch_jira_page, domain, auth, jql, fields, s): s
-                for s in extra_starts
-            }
-            for fut in as_completed(futures):
-                issues.extend(fut.result().get('issues', []))
+    while len(all_issues) < cap:
+        batch = min(100, cap - len(all_issues))
+        params = urllib.parse.urlencode({
+            'jql':        jql,
+            'maxResults': batch,
+            'startAt':    start_at,
+            'fields':     fields,
+        })
+        url = f'https://{domain}/rest/api/3/search/jql?{params}'
+        req = urllib.request.Request(url, headers={
+            'Authorization': f'Basic {auth}',
+            'Accept':        'application/json',
+        })
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            data = json.loads(resp.read())
 
-    return {'issues': issues, 'total': total}
+        page = data.get('issues', [])
+        all_issues.extend(page)
+
+        # Stop when: empty page, short page (last page), or explicit total reached
+        total = data.get('total')
+        if not page or len(page) < batch:
+            break
+        if total is not None and len(all_issues) >= total:
+            break
+
+        start_at += len(page)
+
+    return {'issues': all_issues, 'total': len(all_issues)}
 
 
 def transform_issue(issue, domain):
