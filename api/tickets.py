@@ -12,13 +12,13 @@ from datetime import datetime, timezone
 
 
 def fetch_jira(domain, auth, jql, fields, max_results=100):
-    """Fetch issues from Jira using JQL. No changelog expansion (keeps response fast)."""
+    """Fetch issues from Jira using the new /search/jql endpoint."""
     params = urllib.parse.urlencode({
         'jql': jql,
         'maxResults': max_results,
         'fields': fields,
     })
-    url = f'https://{domain}/rest/api/3/search?{params}'
+    url = f'https://{domain}/rest/api/3/search/jql?{params}'
     req = urllib.request.Request(url, headers={
         'Authorization': f'Basic {auth}',
         'Accept': 'application/json',
@@ -103,7 +103,10 @@ class handler(BaseHTTPRequestHandler):
 
             seen    = set()
             tickets = []
-            for issue in q1_data.get('issues', []) + ip_data.get('issues', []):
+            # new /search/jql endpoint returns 'issues', same as old endpoint
+            q1_issues = q1_data.get('issues', [])
+            ip_issues = ip_data.get('issues', [])
+            for issue in q1_issues + ip_issues:
                 if issue['key'] not in seen:
                     seen.add(issue['key'])
                     tickets.append(transform_issue(issue, domain))
