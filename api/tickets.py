@@ -3,6 +3,7 @@
 # Uses only stdlib — no requirements.txt needed
 
 from http.server import BaseHTTPRequestHandler
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
 import os
 import base64
@@ -12,7 +13,7 @@ from datetime import datetime, timezone
 
 
 def fetch_jira(domain, auth, jql, fields, max_results=100):
-    """Fetch issues from Jira using the new /search/jql endpoint."""
+    """Fetch issues from Jira using the /search/jql endpoint."""
     params = urllib.parse.urlencode({
         'jql': jql,
         'maxResults': max_results,
@@ -40,7 +41,22 @@ def transform_issue(issue, domain):
         (s for s in sprints if s.get('state') in ('active', 'future')), None
     )
 
-    # End date: explicit duedate → active sprint end → None (shown as ongoing)
+    # Epic: check parent field (works for both classic and next-gen projects)
+    parent        = f.get('parent') or {}
+    parent_fields = parent.get('fields') or {}
+    parent_type   = (parent_fields.get('issuetype') or {}).get('name', '')
+    if parent_type == 'Epic':
+        epic_key  = parent.get('key')
+        epic_name = parent_fields.get('summary', '')
+    elif issuetype.get('name') == 'Epic':
+        # The issue itself is an epic
+        epic_key  = issue['key']
+        epic_name = f.get('summary', '')
+    else:
+        epic_key  = None
+        epic_name = None
+
+    # End date: duedate → sprint end → None (frontend fills in 5 working days)
     end_date = None
     if f.get('duedate'):
         end_date = f['duedate']
@@ -56,7 +72,7 @@ def transform_issue(issue, domain):
         'assigneeAvatar': (assignee.get('avatarUrls') or {}).get('48x48'),
         'created':        f.get('created'),
         'updated':        f.get('updated'),
-        'startDate':      f.get('created'),   # use created as start (no changelog needed)
+        'startDate':      f.get('created'),
         'endDate':        end_date,
         'duedate':        f.get('duedate'),
         'labels':         f.get('labels') or [],
@@ -65,6 +81,8 @@ def transform_issue(issue, domain):
         'url':            f'https://{domain}/browse/{issue["key"]}',
         'isQ1':           is_q1,
         'sprint':         sprint['name'] if sprint else None,
+        'epicKey':        epic_key,
+        'epicName':       epic_name,
     }
 
 
@@ -88,49 +106,61 @@ class handler(BaseHTTPRequestHandler):
         auth   = base64.b64encode(f'{email}:{token}'.encode()).decode()
         fields = (
             'summary,status,assignee,created,updated,'
-            'duedate,labels,issuetype,priority,customfield_10020'
+            'duedate,labels,issuetype,priority,customfield_10020,parent'
         )
 
-        try:
-            # Q1-labelled tickets (any status)
-            q1_jql = (
+        queries = {
+            # All Q1-labelled tickets
+            'q1': (
                 f'project = "{project}" AND labels = "2026-q1" '
                 f'ORDER BY updated DESC'
-            )
-            # In Progress tickets updated in Q1 2026 (catches everyone actively working)
-            ip_jql = (
+            ),
+            # In Progress tickets active in Q1 2026
+            'ip': (
                 f'project = "{project}" AND status = "In Progress" '
                 f'AND updated >= "2026-01-01" '
                 f'AND NOT labels = "2026-q1" ORDER BY updated DESC'
-            )
+            ),
             # Closed tickets within Q1 2026
-            closed_jql = (
+            'closed': (
                 f'project = "{project}" AND status = "Closed" '
                 f'AND updated >= "2026-01-01" AND updated <= "2026-03-31" '
                 f'AND NOT labels = "2026-q1" ORDER BY updated DESC'
-            )
+            ),
+            # Anything with a due date within Q1 (catch unassigned/backlog items)
+            'due': (
+                f'project = "{project}" AND duedate >= "2026-01-01" '
+                f'AND duedate <= "2026-03-31" AND status != "Closed" '
+                f'AND NOT labels = "2026-q1" ORDER BY duedate ASC'
+            ),
+        }
 
-            q1_data     = fetch_jira(domain, auth, q1_jql, fields)
-            ip_data     = fetch_jira(domain, auth, ip_jql, fields)
-            closed_data = fetch_jira(domain, auth, closed_jql, fields)
+        try:
+            # Run all 4 Jira queries in parallel to stay within Vercel's timeout
+            results = {}
+            with ThreadPoolExecutor(max_workers=4) as executor:
+                future_map = {
+                    executor.submit(fetch_jira, domain, auth, jql, fields): key
+                    for key, jql in queries.items()
+                }
+                for future in as_completed(future_map):
+                    results[future_map[future]] = future.result()
 
             seen    = set()
             tickets = []
-            for issue in (
-                q1_data.get('issues', []) +
-                ip_data.get('issues', []) +
-                closed_data.get('issues', [])
-            ):
-                if issue['key'] not in seen:
-                    seen.add(issue['key'])
-                    tickets.append(transform_issue(issue, domain))
+            for key in ('q1', 'ip', 'due', 'closed'):
+                for issue in results.get(key, {}).get('issues', []):
+                    if issue['key'] not in seen:
+                        seen.add(issue['key'])
+                        tickets.append(transform_issue(issue, domain))
 
             self._json(200, {
                 'tickets': tickets,
                 'meta': {
-                    'q1Count':         q1_data.get('total', 0),
-                    'inProgressCount': ip_data.get('total', 0),
-                    'closedCount':     closed_data.get('total', 0),
+                    'q1Count':         results.get('q1', {}).get('total', 0),
+                    'inProgressCount': results.get('ip', {}).get('total', 0),
+                    'closedCount':     results.get('closed', {}).get('total', 0),
+                    'dueCount':        results.get('due', {}).get('total', 0),
                     'lastUpdated':     datetime.now(timezone.utc).isoformat(),
                 },
             })

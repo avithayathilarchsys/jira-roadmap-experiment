@@ -6,404 +6,341 @@
   <title>ADT Roadmap</title>
   <style>
     :root {
-      --bg: #0f1117;
-      --surface: #1a1d27;
+      --bg:       #0f1117;
+      --surface:  #1a1d27;
       --surface2: #22263a;
-      --border: #2e3350;
-      --text: #e2e8f0;
-      --text-muted: #8892aa;
-      --accent: #6366f1;
-      --today: #f97316;
+      --border:   #2e3350;
+      --text:     #e2e8f0;
+      --muted:    #8892aa;
+      --accent:   #6366f1;
+      --today:    #f97316;
+      --label-w:  220px;
 
-      /* Status colours */
-      --s-open:   #64748b;
+      --s-open:     #64748b;
       --s-progress: #3b82f6;
-      --s-review:  #8b5cf6;
-      --s-qa:      #f59e0b;
-      --s-rfe:     #06b6d4;
-      --s-done:    #22c55e;
-      --s-q1:      #ec4899;
+      --s-review:   #8b5cf6;
+      --s-qa:       #f59e0b;
+      --s-rfe:      #06b6d4;
+      --s-done:     #22c55e;
+      --s-q1:       #ec4899;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body {
+    html, body {
       background: var(--bg);
       color: var(--text);
       font-family: 'Inter', system-ui, -apple-system, sans-serif;
       font-size: 13px;
-      min-height: 100vh;
+      /* allow horizontal scroll at body level so sticky works correctly */
+      overflow-x: auto;
+      min-width: 900px;
     }
 
-    /* ── Header ──────────────────────────────────────────── */
+    /* ── Fixed top chrome ─────────────────────────────────── */
+    #top-chrome {
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      background: var(--bg);
+    }
+
     header {
       display: flex;
       align-items: center;
-      gap: 16px;
-      padding: 16px 24px;
+      gap: 12px;
+      padding: 14px 24px;
       background: var(--surface);
       border-bottom: 1px solid var(--border);
-      position: sticky;
-      top: 0;
-      z-index: 100;
     }
-    header h1 {
-      font-size: 18px;
-      font-weight: 700;
-      letter-spacing: -0.3px;
-      color: #fff;
-    }
+    header h1 { font-size: 17px; font-weight: 700; color: #fff; }
     header h1 span { color: var(--accent); }
-
     .badge {
       background: var(--surface2);
       border: 1px solid var(--border);
       border-radius: 20px;
       padding: 3px 10px;
       font-size: 11px;
-      color: var(--text-muted);
+      color: var(--muted);
     }
     .badge b { color: var(--text); }
-
     .spacer { flex: 1; }
-
-    #last-updated { font-size: 11px; color: var(--text-muted); }
+    #last-updated { font-size: 11px; color: var(--muted); }
+    .refresh-dot {
+      width: 6px; height: 6px; border-radius: 50%; background: #22c55e;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
 
     button {
-      background: var(--accent);
-      border: none;
-      border-radius: 6px;
-      color: #fff;
-      cursor: pointer;
-      font-size: 12px;
-      font-weight: 600;
-      padding: 6px 14px;
-      transition: opacity 0.15s;
+      background: var(--accent); border: none; border-radius: 6px;
+      color: #fff; cursor: pointer; font-size: 12px; font-weight: 600;
+      padding: 6px 14px; transition: opacity .15s;
     }
-    button:hover { opacity: 0.85; }
-    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    button:hover { opacity: .85; }
+    button:disabled { opacity: .4; cursor: not-allowed; }
 
-    /* ── Filters ──────────────────────────────────────────── */
     .filters {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 24px;
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 8px 24px;
       background: var(--surface);
       border-bottom: 1px solid var(--border);
     }
-    .filter-label { color: var(--text-muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; }
-
-    .pill-group { display: flex; gap: 6px; flex-wrap: wrap; }
-    .pill {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      color: var(--text-muted);
-      cursor: pointer;
-      font-size: 11px;
-      font-weight: 500;
-      padding: 4px 12px;
-      transition: all 0.15s;
-      user-select: none;
+    .filter-label {
+      color: var(--muted); font-size: 11px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: .6px;
     }
-    .pill.active { border-color: var(--accent); color: #fff; background: rgba(99,102,241,0.15); }
+    .pill-group { display: flex; gap: 5px; flex-wrap: wrap; }
+    .pill {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 20px; color: var(--muted); cursor: pointer;
+      font-size: 11px; font-weight: 500; padding: 3px 11px;
+      transition: all .15s; user-select: none;
+    }
+    .pill.active { border-color: var(--accent); color: #fff; background: rgba(99,102,241,.15); }
     .pill:hover:not(.active) { border-color: #4b5280; color: var(--text); }
 
-    /* ── Legend ───────────────────────────────────────────── */
     .legend {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      padding: 8px 24px;
-      flex-wrap: wrap;
+      display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+      padding: 6px 24px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
     }
-    .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-muted); }
+    .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
     .legend-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
 
-    /* ── Loading / Error ──────────────────────────────────── */
+    /* ── State overlays ───────────────────────────────────── */
     #state {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 300px;
-      color: var(--text-muted);
-      font-size: 14px;
-      gap: 10px;
+      display: flex; align-items: center; justify-content: center;
+      min-height: 300px; color: var(--muted); font-size: 14px; gap: 10px;
     }
     .spinner {
       width: 20px; height: 20px;
-      border: 2px solid var(--border);
-      border-top-color: var(--accent);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
+      border: 2px solid var(--border); border-top-color: var(--accent);
+      border-radius: 50%; animation: spin .8s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── Gantt Container ──────────────────────────────────── */
-    #gantt-wrap {
-      overflow-x: auto;
-      padding: 0 24px 40px;
-    }
+    /* ── Gantt layout ─────────────────────────────────────── */
+    #gantt-wrap { padding: 0 0 60px; }
 
-    #gantt {
-      min-width: 900px;
-    }
+    #gantt { min-width: 860px; }
 
-    /* ── Timeline header ──────────────────────────────────── */
+    /* ── Timeline header row ──────────────────────────────── */
     .timeline-row {
       display: grid;
-      grid-template-columns: 200px 1fr;
+      grid-template-columns: var(--label-w) 1fr;
       border-bottom: 1px solid var(--border);
       position: sticky;
-      top: 88px;   /* header + filters height */
       z-index: 50;
       background: var(--bg);
+      /* top is set by JS after measuring chrome height */
     }
-    .tl-label-cell {
-      background: var(--bg);
+    .tl-corner {
       border-right: 1px solid var(--border);
-      padding: 8px 12px;
-      font-size: 11px;
-      color: var(--text-muted);
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+      padding: 7px 12px;
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .5px; color: var(--muted);
     }
-    .tl-track {
-      position: relative;
-      height: 32px;
-      overflow: hidden;
-    }
+    .tl-track { position: relative; height: 30px; overflow: hidden; }
     .tl-month {
-      position: absolute;
-      top: 0; bottom: 0;
-      display: flex;
-      align-items: flex-end;
-      padding-bottom: 6px;
-      font-size: 11px;
-      color: var(--text-muted);
-      font-weight: 600;
-      border-left: 1px solid var(--border);
-      padding-left: 6px;
+      position: absolute; top: 0; bottom: 0;
+      display: flex; align-items: flex-end; padding-bottom: 5px;
+      font-size: 10px; color: var(--muted); font-weight: 600;
+      border-left: 1px solid var(--border); padding-left: 5px;
       white-space: nowrap;
     }
-    .tl-today-marker {
-      position: absolute;
-      top: 0; bottom: 0;
-      width: 2px;
-      background: var(--today);
-      opacity: 0.8;
+    .tl-today-line {
+      position: absolute; top: 0; bottom: 0;
+      width: 2px; background: var(--today); opacity: .9;
+      pointer-events: none;
     }
     .tl-today-label {
-      position: absolute;
-      top: 4px;
-      font-size: 10px;
-      color: var(--today);
-      font-weight: 700;
-      white-space: nowrap;
-      transform: translateX(-50%);
+      position: absolute; top: 3px;
+      font-size: 10px; color: var(--today); font-weight: 700;
+      white-space: nowrap; transform: translateX(-50%);
     }
 
     /* ── Assignee group ───────────────────────────────────── */
-    .assignee-group {
-      border-bottom: 1px solid var(--border);
-    }
+    .assignee-group { border-bottom: 2px solid var(--border); }
+
     .assignee-header {
       display: grid;
-      grid-template-columns: 200px 1fr;
+      grid-template-columns: var(--label-w) 1fr;
       background: var(--surface);
       border-bottom: 1px solid var(--border);
-      position: sticky;
-      /* offset depends on timeline row height */
+      cursor: pointer;
+      user-select: none;
     }
+    .assignee-header:hover { background: var(--surface2); }
+
     .assignee-name-cell {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 12px;
+      display: flex; align-items: center; gap: 8px;
+      padding: 9px 12px;
       border-right: 1px solid var(--border);
     }
     .avatar {
-      width: 26px; height: 26px;
-      border-radius: 50%;
+      width: 26px; height: 26px; border-radius: 50%;
       background: var(--accent);
       display: flex; align-items: center; justify-content: center;
-      font-weight: 700; font-size: 11px; color: #fff;
-      flex-shrink: 0;
-      overflow: hidden;
+      font-weight: 700; font-size: 10px; color: #fff;
+      flex-shrink: 0; overflow: hidden;
     }
     .avatar img { width: 100%; height: 100%; object-fit: cover; }
-    .assignee-name-cell span { font-weight: 600; font-size: 12px; }
+    .assignee-label { font-weight: 600; font-size: 12px; }
     .assignee-count {
       margin-left: auto;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 1px 7px;
-      font-size: 10px;
-      color: var(--text-muted);
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 1px 7px;
+      font-size: 10px; color: var(--muted);
     }
-    .assignee-track-bg {
-      position: relative;
-      min-height: 10px;
+    .chevron {
+      margin-left: 6px; font-size: 10px; color: var(--muted);
+      transition: transform .2s;
     }
+    .assignee-group.collapsed .chevron { transform: rotate(-90deg); }
+    .assignee-group.collapsed .epic-group,
+    .assignee-group.collapsed .ticket-row { display: none; }
+    .assignee-header-track { /* right cell of assignee header */ }
+
+    /* ── Epic sub-group ───────────────────────────────────── */
+    .epic-row {
+      display: grid;
+      grid-template-columns: var(--label-w) 1fr;
+      border-bottom: 1px solid rgba(46,51,80,.6);
+      background: rgba(99,102,241,.04);
+    }
+    .epic-label-cell {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 12px 6px 20px;
+      border-right: 1px solid var(--border);
+    }
+    .epic-diamond { color: var(--accent); font-size: 9px; flex-shrink: 0; }
+    .epic-name {
+      font-size: 11px; font-weight: 600; color: var(--accent);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .epic-track { position: relative; }
 
     /* ── Ticket row ───────────────────────────────────────── */
     .ticket-row {
       display: grid;
-      grid-template-columns: 200px 1fr;
-      border-bottom: 1px solid rgba(46,51,80,0.5);
-      transition: background 0.1s;
+      grid-template-columns: var(--label-w) 1fr;
+      border-bottom: 1px solid rgba(46,51,80,.4);
+      transition: background .1s;
     }
-    .ticket-row:hover { background: rgba(99,102,241,0.04); }
+    .ticket-row:hover { background: rgba(99,102,241,.04); }
+
     .ticket-label-cell {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 8px 12px;
+      display: flex; align-items: center; gap: 5px;
+      padding: 7px 10px 7px 28px;
       border-right: 1px solid var(--border);
-      min-height: 44px;
-      overflow: hidden;
-    }
-    .ticket-key {
-      font-size: 10px;
-      font-weight: 700;
-      color: var(--accent);
-      white-space: nowrap;
-      flex-shrink: 0;
+      min-height: 40px; overflow: hidden;
     }
     .ticket-summary {
-      font-size: 11px;
-      color: var(--text-muted);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      font-size: 11px; color: var(--text);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      flex: 1;
     }
-    .ticket-track {
-      position: relative;
-      min-height: 44px;
+    .ticket-key {
+      font-size: 10px; font-weight: 700; color: var(--muted);
+      white-space: nowrap; flex-shrink: 0;
     }
+
+    .ticket-track { position: relative; min-height: 40px; }
 
     /* ── Gantt bar ────────────────────────────────────────── */
     .gantt-bar {
-      position: absolute;
-      top: 50%;
-      transform: translateY(-50%);
-      height: 22px;
-      border-radius: 5px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      padding: 0 8px;
-      font-size: 10px;
-      font-weight: 600;
-      color: rgba(255,255,255,0.9);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      transition: filter 0.15s, transform 0.15s;
-      min-width: 6px;
-      text-decoration: none;
+      position: absolute; top: 50%; transform: translateY(-50%);
+      height: 20px; border-radius: 4px;
+      cursor: pointer; display: flex; align-items: center;
+      padding: 0 7px; font-size: 10px; font-weight: 500;
+      color: rgba(255,255,255,.9);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      text-decoration: none; min-width: 4px;
+      transition: filter .15s, transform .15s;
     }
     .gantt-bar:hover {
-      filter: brightness(1.15);
-      transform: translateY(-50%) scaleY(1.08);
+      filter: brightness(1.2);
+      transform: translateY(-50%) scaleY(1.1);
       z-index: 10;
     }
-
-    /* Status → colour */
-    .bar-open       { background: var(--s-open); }
-    .bar-progress   { background: var(--s-progress); }
-    .bar-review     { background: var(--s-review); }
-    .bar-qa         { background: var(--s-qa); }
-    .bar-rfe        { background: var(--s-rfe); }
-    .bar-done       { background: var(--s-done); opacity: 0.55; }
+    .bar-open     { background: var(--s-open); }
+    .bar-progress { background: var(--s-progress); }
+    .bar-review   { background: var(--s-review); }
+    .bar-qa       { background: var(--s-qa); }
+    .bar-rfe      { background: var(--s-rfe); }
+    .bar-done     { background: var(--s-done); opacity: .6; }
     .bar-q1-outline { outline: 2px solid var(--s-q1); outline-offset: -2px; }
 
-    /* Today line on track */
-    .track-today {
-      position: absolute;
-      top: 0; bottom: 0;
-      width: 1px;
-      background: var(--today);
-      opacity: 0.4;
+    .track-today-line {
+      position: absolute; top: 0; bottom: 0;
+      width: 1px; background: var(--today); opacity: .35;
       pointer-events: none;
     }
 
     /* ── Tooltip ──────────────────────────────────────────── */
     #tooltip {
-      position: fixed;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px 14px;
-      pointer-events: none;
-      z-index: 9999;
-      max-width: 320px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      position: fixed; background: var(--surface2);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 10px 14px; pointer-events: none; z-index: 9999;
+      max-width: 320px; box-shadow: 0 8px 24px rgba(0,0,0,.5);
       display: none;
     }
-    #tooltip .tt-key   { font-size: 11px; font-weight: 700; color: var(--accent); margin-bottom: 3px; }
-    #tooltip .tt-title { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 8px; line-height: 1.4; }
-    #tooltip .tt-meta  { font-size: 11px; color: var(--text-muted); display: flex; flex-direction: column; gap: 3px; }
-    #tooltip .tt-row   { display: flex; justify-content: space-between; gap: 16px; }
-    #tooltip .tt-val   { color: var(--text); }
-    .tt-status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+    .tt-key   { font-size: 11px; font-weight: 700; color: var(--accent); margin-bottom: 2px; }
+    .tt-title { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 7px; line-height: 1.4; }
+    .tt-meta  { font-size: 11px; color: var(--muted); display: flex; flex-direction: column; gap: 3px; }
+    .tt-row   { display: flex; justify-content: space-between; gap: 16px; }
+    .tt-val   { color: var(--text); }
+    .tt-sdot  { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
 
-    /* ── Empty state ──────────────────────────────────────── */
-    .empty-row {
-      grid-column: 1 / -1;
-      padding: 20px;
-      text-align: center;
-      color: var(--text-muted);
-      font-size: 12px;
-    }
-
-    /* ── Auto-refresh indicator ───────────────────────────── */
-    .refresh-dot {
-      width: 6px; height: 6px;
-      border-radius: 50%;
-      background: #22c55e;
-      animation: pulse 2s ease-in-out infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50%       { opacity: 0.3; }
+    /* ── Misc ─────────────────────────────────────────────── */
+    .grid-bg-line {
+      position: absolute; top: 0; bottom: 0;
+      width: 1px; background: var(--border); opacity: .4;
+      pointer-events: none;
     }
   </style>
 </head>
 <body>
 
-<header>
-  <h1>ADT <span>Roadmap</span></h1>
-  <div class="badge">Q1 2026 · <b id="ticket-count">—</b> tickets</div>
-  <div class="spacer"></div>
-  <div class="refresh-dot" title="Auto-refreshes every 5 min"></div>
-  <span id="last-updated" style="margin-left:8px;">Loading…</span>
-  <button id="refresh-btn" onclick="loadTickets()">↺ Refresh</button>
-</header>
+<!-- All sticky chrome in one wrapper so we can measure total height -->
+<div id="top-chrome">
+  <header>
+    <h1>ADT <span>Roadmap</span></h1>
+    <div class="badge">Q1 2026 · <b id="ticket-count">—</b> tickets</div>
+    <div class="spacer"></div>
+    <div class="refresh-dot" title="Auto-refreshes every 5 min"></div>
+    <span id="last-updated" style="margin-left:8px">Loading…</span>
+    <button id="refresh-btn" onclick="loadTickets()">↺ Refresh</button>
+  </header>
 
-<div class="filters">
-  <span class="filter-label">Show</span>
-  <div class="pill-group" id="filter-pills">
-    <div class="pill active" data-filter="all">All</div>
-    <div class="pill" data-filter="q1">Q1 2026 only</div>
-    <div class="pill" data-filter="inprogress">In Progress only</div>
+  <div class="filters">
+    <span class="filter-label">Show</span>
+    <div class="pill-group" id="filter-pills">
+      <div class="pill active" data-filter="all">All</div>
+      <div class="pill" data-filter="q1">Q1 labelled</div>
+      <div class="pill" data-filter="inprogress">In Progress</div>
+    </div>
+    <span style="margin-left:12px" class="filter-label">Assignee</span>
+    <div class="pill-group" id="assignee-pills"></div>
   </div>
-  <span style="margin-left:16px;" class="filter-label">Assignee</span>
-  <div class="pill-group" id="assignee-pills"></div>
-</div>
 
-<div class="legend">
-  <span style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-right:4px;">Status:</span>
-  <div class="legend-item"><div class="legend-dot" style="background:var(--s-open)"></div> Open</div>
-  <div class="legend-item"><div class="legend-dot" style="background:var(--s-progress)"></div> In Progress</div>
-  <div class="legend-item"><div class="legend-dot" style="background:var(--s-review)"></div> Code Review</div>
-  <div class="legend-item"><div class="legend-dot" style="background:var(--s-qa)"></div> QA</div>
-  <div class="legend-item"><div class="legend-dot" style="background:var(--s-rfe)"></div> Ready For Engineering</div>
-  <div class="legend-item"><div class="legend-dot" style="background:var(--s-done)"></div> Closed</div>
-  <div class="legend-item" style="margin-left:8px;"><div class="legend-dot" style="background:transparent;border:2px solid var(--s-q1);border-radius:3px;"></div> Q1 label</div>
+  <div class="legend">
+    <span class="filter-label" style="margin-right:4px">Status:</span>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--s-open)"></div>Open</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--s-progress)"></div>In Progress</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--s-review)"></div>Code Review</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--s-qa)"></div>QA</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--s-rfe)"></div>Ready For Eng</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--s-done)"></div>Closed</div>
+    <div class="legend-item" style="margin-left:6px">
+      <div class="legend-dot" style="background:transparent;border:2px solid var(--s-q1);border-radius:3px"></div>Q1 label
+    </div>
+    <div class="legend-item" style="margin-left:6px">
+      <div class="legend-dot" style="background:var(--accent);border-radius:2px"></div>Epic
+    </div>
+  </div>
 </div>
 
 <div id="state"><div class="spinner"></div> Loading tickets from Jira…</div>
@@ -414,27 +351,36 @@
 <div id="tooltip"></div>
 
 <script>
-// ── Config ────────────────────────────────────────────────
-const API_URL = '/api/tickets';
-const AUTO_REFRESH_MS = 5 * 60 * 1000; // 5 minutes
+const API_URL          = '/api/tickets';
+const AUTO_REFRESH_MS  = 5 * 60 * 1000;
 
-// ── State ─────────────────────────────────────────────────
-let allTickets = [];
-let activeFilter = 'all';
-let activeAssignees = new Set();
+let allTickets    = [];
+let activeFilter  = 'all';
+let hiddenAssignees = new Set();
 let timelineStart, timelineEnd;
 let refreshTimer;
 
-// ── Data Loading ──────────────────────────────────────────
+// ── Working days helper ───────────────────────────────────
+function addWorkingDays(fromDate, days) {
+  const d = new Date(fromDate);
+  let count = 0;
+  while (count < days) {
+    d.setDate(d.getDate() + 1);
+    const dow = d.getDay();
+    if (dow !== 0 && dow !== 6) count++;
+  }
+  return d;
+}
+
+// ── Load ──────────────────────────────────────────────────
 async function loadTickets() {
   const btn = document.getElementById('refresh-btn');
-  btn.disabled = true;
-  btn.textContent = '↺ Refreshing…';
-
+  btn.disabled = true; btn.textContent = '↺ Refreshing…';
   try {
-    const res = await fetch(API_URL);
+    const res  = await fetch(API_URL);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
+    if (data.error) throw new Error(data.error);
     allTickets = data.tickets || [];
 
     const ts = new Date(data.meta?.lastUpdated || Date.now());
@@ -444,15 +390,14 @@ async function loadTickets() {
 
     buildAssigneePills();
     renderGantt();
-
-    document.getElementById('state').style.display = 'none';
+    document.getElementById('state').style.display     = 'none';
     document.getElementById('gantt-wrap').style.display = 'block';
   } catch (err) {
     document.getElementById('state').innerHTML =
       `<span style="color:#f87171">⚠ Failed to load: ${err.message}</span>`;
+    document.getElementById('state').style.display = 'flex';
   } finally {
-    btn.disabled = false;
-    btn.textContent = '↺ Refresh';
+    btn.disabled = false; btn.textContent = '↺ Refresh';
   }
 }
 
@@ -467,190 +412,292 @@ document.getElementById('filter-pills').addEventListener('click', e => {
 });
 
 function buildAssigneePills() {
-  const assignees = [...new Set(allTickets.map(t => t.assignee))].sort();
-  const container = document.getElementById('assignee-pills');
-  container.innerHTML = '';
-  for (const name of assignees) {
+  const names = [...new Set(allTickets.map(t => t.assignee))].sort();
+  const c = document.getElementById('assignee-pills');
+  c.innerHTML = '';
+  hiddenAssignees.clear();
+  for (const name of names) {
     const pill = document.createElement('div');
     pill.className = 'pill active';
     pill.dataset.assignee = name;
-    pill.textContent = name.split(' ')[0]; // first name only
+    pill.textContent = name.split(' ')[0];
     pill.addEventListener('click', () => {
       pill.classList.toggle('active');
-      if (pill.classList.contains('active')) {
-        activeAssignees.delete(name);
-      } else {
-        activeAssignees.add(name);
-      }
+      if (pill.classList.contains('active')) hiddenAssignees.delete(name);
+      else hiddenAssignees.add(name);
       renderGantt();
     });
-    container.appendChild(pill);
+    c.appendChild(pill);
   }
-  activeAssignees.clear();
 }
 
-// ── Gantt rendering ───────────────────────────────────────
+// ── Filter logic ──────────────────────────────────────────
 function getFilteredTickets() {
   return allTickets.filter(t => {
-    // filter by view
-    if (activeFilter === 'q1' && !t.isQ1) return false;
-    if (activeFilter === 'inprogress' && t.status !== 'In Progress') return false;
-    // filter by assignee deselection
-    if (activeAssignees.has(t.assignee)) return false;
+    if (activeFilter === 'q1'         && !t.isQ1)                    return false;
+    if (activeFilter === 'inprogress' && t.status !== 'In Progress')  return false;
+    if (hiddenAssignees.has(t.assignee))                              return false;
     return true;
   });
 }
 
+// ── Timeline helpers ──────────────────────────────────────
 function computeTimeline(tickets) {
   const today = new Date();
-  let min = new Date(today);
-  min.setDate(min.getDate() - 30); // default: show 30 days back
-  let max = new Date(today);
-  max.setDate(max.getDate() + 45); // default: show 45 days ahead
+  let min = new Date(today); min.setDate(min.getDate() - 14);
+  let max = new Date('2026-03-31');                        // end of Q1
+  if (today > max) { max = new Date(today); max.setDate(max.getDate() + 30); }
 
   for (const t of tickets) {
-    const start = new Date(t.startDate || t.created);
-    if (start < min) min = start;
-    if (t.endDate) {
-      const end = new Date(t.endDate);
-      if (end > max) max = end;
-    }
+    const s = new Date(t.startDate || t.created);
+    if (s < min) min = s;
+    const end = resolveEndDate(t);
+    if (end > max) max = end;
   }
   return { start: min, end: max };
 }
 
-function dateToPct(date, start, end) {
-  const total = end - start;
-  const pos   = new Date(date) - start;
-  return Math.max(0, Math.min(100, (pos / total) * 100));
+function resolveEndDate(ticket) {
+  if (ticket.endDate)  return new Date(ticket.endDate);
+  if (ticket.status === 'Closed') return new Date(ticket.updated);
+  return addWorkingDays(new Date(), 5);
 }
 
-function statusClass(status) {
-  const s = (status || '').toLowerCase();
-  if (s.includes('progress'))  return 'bar-progress';
-  if (s.includes('review'))    return 'bar-review';
-  if (s === 'qa')              return 'bar-qa';
-  if (s.includes('ready'))     return 'bar-rfe';
-  if (s === 'closed' || s === 'done') return 'bar-done';
+function dateToPct(date, start, end) {
+  const total = end - start;
+  return Math.max(0, Math.min(100, (new Date(date) - start) / total * 100));
+}
+
+function statusClass(s) {
+  const v = (s || '').toLowerCase();
+  if (v.includes('progress')) return 'bar-progress';
+  if (v.includes('review'))   return 'bar-review';
+  if (v === 'qa')             return 'bar-qa';
+  if (v.includes('ready'))    return 'bar-rfe';
+  if (v === 'closed' || v === 'done') return 'bar-done';
   return 'bar-open';
 }
 
-function daysAgo(dateStr) {
-  const d = Math.floor((Date.now() - new Date(dateStr)) / 86400000);
-  if (d === 0) return 'today';
-  if (d === 1) return '1 day ago';
-  return `${d} days ago`;
+function statusColor(s) {
+  const v = (s || '').toLowerCase();
+  if (v.includes('progress')) return 'var(--s-progress)';
+  if (v.includes('review'))   return 'var(--s-review)';
+  if (v === 'qa')             return 'var(--s-qa)';
+  if (v.includes('ready'))    return 'var(--s-rfe)';
+  if (v === 'closed' || v === 'done') return 'var(--s-done)';
+  return 'var(--s-open)';
 }
 
+function daysAgo(d) {
+  const n = Math.floor((Date.now() - new Date(d)) / 86400000);
+  return n === 0 ? 'today' : n === 1 ? '1 day ago' : `${n} days ago`;
+}
+
+function escHtml(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function getMonthMarkers(start, end) {
+  const m = [];
+  const c = new Date(start.getFullYear(), start.getMonth(), 1);
+  while (c <= end) {
+    m.push({
+      pct:   dateToPct(c, start, end),
+      label: c.toLocaleString('default', { month: 'short', year: '2-digit' }),
+    });
+    c.setMonth(c.getMonth() + 1);
+  }
+  return m;
+}
+
+// ── Render ────────────────────────────────────────────────
 function renderGantt() {
   const tickets = getFilteredTickets();
-  if (tickets.length === 0) {
-    document.getElementById('gantt').innerHTML =
-      '<div class="empty-row" style="padding:40px;text-align:center;color:var(--text-muted)">No tickets match the current filters.</div>';
+  const gantt   = document.getElementById('gantt');
+  gantt.innerHTML = '';
+
+  if (!tickets.length) {
+    gantt.innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted)">No tickets match the current filters.</div>';
     return;
   }
 
-  const tl = computeTimeline(tickets);
+  const today = new Date();
+  const tl    = computeTimeline(tickets);
   timelineStart = tl.start;
   timelineEnd   = tl.end;
-  const today = new Date();
   const todayPct = dateToPct(today, timelineStart, timelineEnd);
 
-  // Group by assignee
-  const groups = {};
-  for (const t of tickets) {
-    if (!groups[t.assignee]) groups[t.assignee] = [];
-    groups[t.assignee].push(t);
+  // ── Month marker positions (shared across all track cells) ──
+  const months = getMonthMarkers(timelineStart, timelineEnd);
+
+  function makeTrackBg() {
+    const el = document.createElement('div');
+    el.style.cssText = 'position:relative;width:100%;height:100%';
+    for (const m of months) {
+      const line = document.createElement('div');
+      line.className = 'grid-bg-line';
+      line.style.left = m.pct + '%';
+      el.appendChild(line);
+    }
+    const tl2 = document.createElement('div');
+    tl2.className = 'track-today-line';
+    tl2.style.left = todayPct + '%';
+    el.appendChild(tl2);
+    return el;
   }
-  const sortedAssignees = Object.keys(groups).sort();
 
-  const gantt = document.getElementById('gantt');
-  gantt.innerHTML = '';
-
-  // ── Timeline header ──
+  // ── Timeline header row ───────────────────────────────────
   const tlRow = document.createElement('div');
   tlRow.className = 'timeline-row';
-  tlRow.innerHTML = `<div class="tl-label-cell">Assignee / Ticket</div><div class="tl-track" id="tl-track"></div>`;
-  gantt.appendChild(tlRow);
 
-  // Populate month markers
-  const track = tlRow.querySelector('#tl-track');
-  const months = getMonthMarkers(timelineStart, timelineEnd);
+  const corner = document.createElement('div');
+  corner.className = 'tl-corner';
+  corner.textContent = 'Assignee / Ticket';
+  tlRow.appendChild(corner);
+
+  const tlTrack = document.createElement('div');
+  tlTrack.className = 'tl-track';
   for (const m of months) {
     const el = document.createElement('div');
     el.className = 'tl-month';
     el.style.left = m.pct + '%';
     el.textContent = m.label;
-    track.appendChild(el);
+    tlTrack.appendChild(el);
   }
-  // Today marker
-  const todayMarker = document.createElement('div');
-  todayMarker.className = 'tl-today-marker';
-  todayMarker.style.left = todayPct + '%';
-  track.appendChild(todayMarker);
-  const todayLabel = document.createElement('div');
-  todayLabel.className = 'tl-today-label';
-  todayLabel.style.left = todayPct + '%';
-  todayLabel.textContent = 'Today';
-  track.appendChild(todayLabel);
+  const todayLine = document.createElement('div');
+  todayLine.className = 'tl-today-line';
+  todayLine.style.left = todayPct + '%';
+  tlTrack.appendChild(todayLine);
+  const todayLbl = document.createElement('div');
+  todayLbl.className = 'tl-today-label';
+  todayLbl.style.left = todayPct + '%';
+  todayLbl.textContent = 'Today';
+  tlTrack.appendChild(todayLbl);
 
-  // ── Assignee groups ──
-  for (const assignee of sortedAssignees) {
-    const aTickets = groups[assignee];
+  tlRow.appendChild(tlTrack);
+  gantt.appendChild(tlRow);
+
+  // Set sticky top to actual chrome height
+  const chromeH = document.getElementById('top-chrome').offsetHeight;
+  tlRow.style.top = chromeH + 'px';
+
+  // ── Group: assignee → epicKey → [tickets] ─────────────────
+  const assigneeMap = {};
+  for (const t of tickets) {
+    if (!assigneeMap[t.assignee]) assigneeMap[t.assignee] = {};
+    const ek = t.epicKey || '__none__';
+    if (!assigneeMap[t.assignee][ek]) {
+      assigneeMap[t.assignee][ek] = { epicName: t.epicName || null, tickets: [] };
+    }
+    assigneeMap[t.assignee][ek].tickets.push(t);
+  }
+
+  for (const assignee of Object.keys(assigneeMap).sort()) {
+    const epicMap  = assigneeMap[assignee];
+    const allTix   = Object.values(epicMap).flatMap(e => e.tickets);
+    const initials = assignee.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+    const avatarSrc = allTix[0]?.assigneeAvatar;
+
     const group = document.createElement('div');
     group.className = 'assignee-group';
 
-    // Assignee header
-    const initials = assignee.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-    const avatarHtml = aTickets[0]?.assigneeAvatar
-      ? `<div class="avatar"><img src="${aTickets[0].assigneeAvatar}" alt="${initials}"/></div>`
-      : `<div class="avatar">${initials}</div>`;
-
+    // ── Assignee header ──
     const ah = document.createElement('div');
     ah.className = 'assignee-header';
-    ah.innerHTML = `
-      <div class="assignee-name-cell">
-        ${avatarHtml}
-        <span>${assignee}</span>
-        <span class="assignee-count">${aTickets.length}</span>
-      </div>
-      <div class="assignee-track-bg"></div>
+
+    const nameCell = document.createElement('div');
+    nameCell.className = 'assignee-name-cell';
+    nameCell.innerHTML = `
+      <div class="avatar">${avatarSrc ? `<img src="${avatarSrc}" alt="${initials}">` : initials}</div>
+      <span class="assignee-label">${escHtml(assignee)}</span>
+      <span class="assignee-count">${allTix.length}</span>
+      <span class="chevron">▾</span>
     `;
+    ah.appendChild(nameCell);
+
+    const ahTrack = document.createElement('div');
+    ahTrack.className = 'assignee-header-track';
+    ah.appendChild(ahTrack);
+
+    ah.addEventListener('click', () => group.classList.toggle('collapsed'));
     group.appendChild(ah);
 
-    // Ticket rows
-    for (const ticket of aTickets) {
-      const startPct = dateToPct(ticket.startDate || ticket.created, timelineStart, timelineEnd);
-      const endDate  = ticket.endDate ? new Date(ticket.endDate) : today;
-      const endPct   = dateToPct(endDate, timelineStart, timelineEnd);
-      const widthPct = Math.max(0.3, endPct - startPct);
+    // ── Epic groups ──
+    const epicKeys = Object.keys(epicMap);
+    const sortedEpics = [
+      ...epicKeys.filter(k => k !== '__none__').sort((a, b) =>
+        (epicMap[a].epicName || '').localeCompare(epicMap[b].epicName || '')),
+      ...(epicMap['__none__'] ? ['__none__'] : []),
+    ];
 
-      const barClass = statusClass(ticket.status);
-      const q1outline = ticket.isQ1 ? 'bar-q1-outline' : '';
+    for (const ek of sortedEpics) {
+      const { epicName, tickets: eTix } = epicMap[ek];
+      const epicGroup = document.createElement('div');
+      epicGroup.className = 'epic-group';
 
-      const row = document.createElement('div');
-      row.className = 'ticket-row';
-      row.innerHTML = `
-        <div class="ticket-label-cell">
-          <span class="ticket-summary" title="${escHtml(ticket.summary)}">${escHtml(ticket.summary)}</span>
-          <span class="ticket-key">${ticket.key}</span>
-        </div>
-        <div class="ticket-track">
-          <div class="track-today" style="left:${todayPct}%"></div>
-          <a href="${ticket.url}" target="_blank" rel="noopener"
-             class="gantt-bar ${barClass} ${q1outline}"
-             style="left:${startPct}%; width:${widthPct}%"
-             data-ticket='${JSON.stringify(ticket).replace(/'/g,"&#39;")}'
-          >${escHtml(ticket.summary)}</a>
-        </div>
-      `;
-      group.appendChild(row);
+      // Epic sub-header (skip for ungrouped)
+      if (ek !== '__none__') {
+        const er = document.createElement('div');
+        er.className = 'epic-row';
+
+        const elc = document.createElement('div');
+        elc.className = 'epic-label-cell';
+        elc.innerHTML = `<span class="epic-diamond">◆</span><span class="epic-name" title="${escHtml(epicName || ek)}">${escHtml(epicName || ek)}</span>`;
+        er.appendChild(elc);
+
+        const etc = document.createElement('div');
+        etc.className = 'epic-track';
+        etc.style.position = 'relative';
+        etc.appendChild(makeTrackBg());
+        er.appendChild(etc);
+        epicGroup.appendChild(er);
+      }
+
+      // Ticket rows
+      for (const ticket of eTix) {
+        const startPct = dateToPct(ticket.startDate || ticket.created, timelineStart, timelineEnd);
+        const endDate  = resolveEndDate(ticket);
+        const endPct   = dateToPct(endDate, timelineStart, timelineEnd);
+        const widthPct = Math.max(0.4, endPct - startPct);
+        const hasDefaultEnd = !ticket.endDate && ticket.status !== 'Closed';
+
+        const barClass   = statusClass(ticket.status);
+        const q1outline  = ticket.isQ1 ? 'bar-q1-outline' : '';
+        const barStyle   = hasDefaultEnd
+          ? `left:${startPct}%;width:${widthPct}%;opacity:.75;border-right:2px dashed rgba(255,255,255,.4)`
+          : `left:${startPct}%;width:${widthPct}%`;
+
+        const safeData = JSON.stringify(ticket).replace(/'/g, "&#39;");
+
+        const row = document.createElement('div');
+        row.className = 'ticket-row';
+        row.innerHTML = `
+          <div class="ticket-label-cell">
+            <span class="ticket-summary" title="${escHtml(ticket.summary)}">${escHtml(ticket.summary)}</span>
+            <span class="ticket-key">${ticket.key}</span>
+          </div>
+          <div class="ticket-track">
+            <a href="${ticket.url}" target="_blank" rel="noopener"
+               class="gantt-bar ${barClass} ${q1outline}"
+               style="${barStyle}"
+               data-ticket='${safeData}'
+            >${escHtml(ticket.summary)}</a>
+          </div>
+        `;
+        // Inject today line into each track
+        const track = row.querySelector('.ticket-track');
+        track.appendChild(makeTrackBg());
+
+        epicGroup.appendChild(row);
+      }
+
+      group.appendChild(epicGroup);
     }
 
     gantt.appendChild(group);
   }
 
-  // Attach tooltip listeners
+  // Tooltip listeners
   document.querySelectorAll('.gantt-bar').forEach(bar => {
     bar.addEventListener('mouseenter', showTooltip);
     bar.addEventListener('mousemove',  moveTooltip);
@@ -658,43 +705,30 @@ function renderGantt() {
   });
 }
 
-// ── Month markers ─────────────────────────────────────────
-function getMonthMarkers(start, end) {
-  const markers = [];
-  const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
-  while (cursor <= end) {
-    const pct = dateToPct(cursor, start, end);
-    markers.push({
-      pct,
-      label: cursor.toLocaleString('default', { month: 'short', year: '2-digit' }),
-    });
-    cursor.setMonth(cursor.getMonth() + 1);
-  }
-  return markers;
-}
-
 // ── Tooltip ───────────────────────────────────────────────
 const tooltip = document.getElementById('tooltip');
 
 function showTooltip(e) {
-  const data = JSON.parse(e.currentTarget.dataset.ticket.replace(/&#39;/g, "'"));
-  const startStr = new Date(data.startDate || data.created).toLocaleDateString();
-  const endStr   = data.endDate ? new Date(data.endDate).toLocaleDateString() : 'Ongoing';
-  const duration = Math.floor((Date.now() - new Date(data.startDate || data.created)) / 86400000);
-
-  const statusDot = `<span class="tt-status-dot" style="background:${statusColour(data.status)}"></span>`;
+  const t = JSON.parse(e.currentTarget.dataset.ticket.replace(/&#39;/g, "'"));
+  const endDate  = resolveEndDate(t);
+  const hasDefaultEnd = !t.endDate && t.status !== 'Closed';
+  const endStr   = hasDefaultEnd
+    ? `~${endDate.toLocaleDateString()} (est. 5 working days)`
+    : (t.endDate ? new Date(t.endDate).toLocaleDateString() : 'Ongoing');
+  const duration = Math.floor((Date.now() - new Date(t.startDate || t.created)) / 86400000);
 
   tooltip.innerHTML = `
-    <div class="tt-key">${data.key} ${data.isQ1 ? '<span style="color:var(--s-q1)">● Q1</span>' : ''}</div>
-    <div class="tt-title">${escHtml(data.summary)}</div>
+    <div class="tt-key">${t.key}${t.isQ1 ? ' <span style="color:var(--s-q1)">● Q1</span>' : ''}</div>
+    <div class="tt-title">${escHtml(t.summary)}</div>
     <div class="tt-meta">
-      <div class="tt-row"><span>Status</span><span class="tt-val">${statusDot}${data.status}</span></div>
-      <div class="tt-row"><span>Type</span><span class="tt-val">${data.issuetype}</span></div>
-      <div class="tt-row"><span>Priority</span><span class="tt-val">${data.priority}</span></div>
-      <div class="tt-row"><span>Started</span><span class="tt-val">${startStr} (${daysAgo(data.startDate || data.created)})</span></div>
+      <div class="tt-row"><span>Status</span><span class="tt-val"><span class="tt-sdot" style="background:${statusColor(t.status)}"></span>${t.status}</span></div>
+      <div class="tt-row"><span>Type</span><span class="tt-val">${t.issuetype}</span></div>
+      <div class="tt-row"><span>Priority</span><span class="tt-val">${t.priority}</span></div>
+      ${t.epicName ? `<div class="tt-row"><span>Epic</span><span class="tt-val">${escHtml(t.epicName)}</span></div>` : ''}
+      <div class="tt-row"><span>Started</span><span class="tt-val">${new Date(t.startDate||t.created).toLocaleDateString()} (${daysAgo(t.startDate||t.created)})</span></div>
       <div class="tt-row"><span>Due / End</span><span class="tt-val">${endStr}</span></div>
-      <div class="tt-row"><span>Duration</span><span class="tt-val">${duration} day${duration === 1 ? '' : 's'}</span></div>
-      ${data.sprint ? `<div class="tt-row"><span>Sprint</span><span class="tt-val">${data.sprint}</span></div>` : ''}
+      <div class="tt-row"><span>Duration</span><span class="tt-val">${duration}d active</span></div>
+      ${t.sprint ? `<div class="tt-row"><span>Sprint</span><span class="tt-val">${escHtml(t.sprint)}</span></div>` : ''}
     </div>
   `;
   tooltip.style.display = 'block';
@@ -702,42 +736,21 @@ function showTooltip(e) {
 }
 
 function moveTooltip(e) {
-  const pad = 12;
-  const tw = tooltip.offsetWidth;
-  const th = tooltip.offsetHeight;
-  let x = e.clientX + pad;
-  let y = e.clientY + pad;
+  const pad = 12, tw = tooltip.offsetWidth, th = tooltip.offsetHeight;
+  let x = e.clientX + pad, y = e.clientY + pad;
   if (x + tw > window.innerWidth  - pad) x = e.clientX - tw - pad;
   if (y + th > window.innerHeight - pad) y = e.clientY - th - pad;
   tooltip.style.left = x + 'px';
   tooltip.style.top  = y + 'px';
 }
-
 function hideTooltip() { tooltip.style.display = 'none'; }
-
-function statusColour(status) {
-  const s = (status || '').toLowerCase();
-  if (s.includes('progress'))  return 'var(--s-progress)';
-  if (s.includes('review'))    return 'var(--s-review)';
-  if (s === 'qa')              return 'var(--s-qa)';
-  if (s.includes('ready'))     return 'var(--s-rfe)';
-  if (s === 'closed' || s === 'done') return 'var(--s-done)';
-  return 'var(--s-open)';
-}
-
-function escHtml(str) {
-  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
 
 // ── Auto-refresh ──────────────────────────────────────────
 function scheduleRefresh() {
   clearTimeout(refreshTimer);
-  refreshTimer = setTimeout(() => {
-    loadTickets().then(scheduleRefresh);
-  }, AUTO_REFRESH_MS);
+  refreshTimer = setTimeout(() => loadTickets().then(scheduleRefresh), AUTO_REFRESH_MS);
 }
 
-// ── Boot ──────────────────────────────────────────────────
 loadTickets().then(scheduleRefresh);
 </script>
 </body>
