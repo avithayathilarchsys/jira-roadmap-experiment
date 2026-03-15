@@ -372,10 +372,10 @@
     <span class="filter-label" style="margin-right:4px">Status:</span>
     <div class="legend-item"><div class="legend-dot" style="background:var(--s-open)"></div>Open</div>
     <div class="legend-item"><div class="legend-dot" style="background:var(--s-progress)"></div>In Progress</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--s-review)"></div>Code Review</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--s-review)"></div>Review</div>
     <div class="legend-item"><div class="legend-dot" style="background:var(--s-qa)"></div>QA</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--s-rfe)"></div>Ready For Eng</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--s-done)"></div>Closed</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--s-rfe)"></div>Selected / RFE</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--s-done)"></div>Closed / Deployed</div>
     <div class="legend-item" style="margin-left:6px">
       <div class="legend-dot" style="background:transparent;border:2px solid var(--s-q1);border-radius:3px"></div>Q1 label
     </div>
@@ -520,7 +520,7 @@ function getFilteredTickets() {
   return allTickets.filter(t => {
     if (activeProject !== 'all' && t.project !== activeProject)       return false;
     if (activeFilter === 'q1'         && !t.isQ1)                    return false;
-    if (activeFilter === 'inprogress' && t.status !== 'In Progress')  return false;
+    if (activeFilter === 'inprogress' && statusClass(t.status) !== 'bar-progress') return false;
     if (hiddenAssignees.has(t.assignee))                              return false;
     return true;
   });
@@ -559,20 +559,24 @@ function dateToPct(date, start, end) {
 
 function statusClass(s) {
   const v = (s || '').toLowerCase();
-  if (v.includes('progress')) return 'bar-progress';
-  if (v.includes('review'))   return 'bar-review';
-  if (v === 'qa')             return 'bar-qa';
-  if (v.includes('ready'))    return 'bar-rfe';
+  if (v.includes('progress'))    return 'bar-progress';
+  if (v.includes('review'))      return 'bar-review';
+  if (v === 'qa')                return 'bar-qa';
+  if (v.includes('ready'))       return 'bar-rfe';
+  if (v.includes('deployment'))  return 'bar-done';   // AAD: Awaiting Deployment
+  if (v.includes('selected'))    return 'bar-rfe';    // AAD: Selected for Development
   if (v === 'closed' || v === 'done') return 'bar-done';
   return 'bar-open';
 }
 
 function statusColor(s) {
   const v = (s || '').toLowerCase();
-  if (v.includes('progress')) return 'var(--s-progress)';
-  if (v.includes('review'))   return 'var(--s-review)';
-  if (v === 'qa')             return 'var(--s-qa)';
-  if (v.includes('ready'))    return 'var(--s-rfe)';
+  if (v.includes('progress'))    return 'var(--s-progress)';
+  if (v.includes('review'))      return 'var(--s-review)';
+  if (v === 'qa')                return 'var(--s-qa)';
+  if (v.includes('ready'))       return 'var(--s-rfe)';
+  if (v.includes('deployment'))  return 'var(--s-done)';   // AAD: Awaiting Deployment
+  if (v.includes('selected'))    return 'var(--s-rfe)';    // AAD: Selected for Development
   if (v === 'closed' || v === 'done') return 'var(--s-done)';
   return 'var(--s-open)';
 }

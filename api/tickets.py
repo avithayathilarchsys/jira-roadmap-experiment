@@ -119,9 +119,11 @@ class handler(BaseHTTPRequestHandler):
                 f'{project_jql} AND labels = "2026-q1" '
                 f'ORDER BY updated DESC'
             ),
-            # In Progress tickets active in Q1 2026
+            # Active tickets (any non-terminal status) updated in Q1 2026
+            # Broad exclusion covers both ADT and AAD workflows
             'ip': (
-                f'{project_jql} AND status = "In Progress" '
+                f'{project_jql} AND status NOT IN '
+                f'("Closed", "Done", "Backlog", "Grooming", "Cancelled", "Rejected") '
                 f'AND updated >= "2026-01-01" '
                 f'AND NOT labels = "2026-q1" ORDER BY updated DESC'
             ),
