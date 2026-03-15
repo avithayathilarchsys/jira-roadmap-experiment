@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ADT Roadmap</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3350;
+      --text: #e2e8f0;
+      --text-muted: #8892aa;
+      --accent: #6366f1;
+      --today: #f97316;
+
+      /* Status colours */
+      --s-open:   #64748b;
+      --s-progress: #3b82f6;
+      --s-review:  #8b5cf6;
+      --s-qa:      #f59e0b;
+      --s-rfe:     #06b6d4;
+      --s-done:    #22c55e;
+      --s-q1:      #ec4899;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-size: 13px;
+      min-height: 100vh;
+    }
+
+    /* ── Header ───────────────────────────────────────────── */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px 24px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    header h1 {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      color: #fff;
+    }
+    header h1 span { color: var(--accent); }
+
+    .badge {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 3px 10px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .badge b { color: var(--text); }
+
+    .spacer { flex: 1; }
+
+    #last-updated { font-size: 11px; color: var(--text-muted); }
+
+    button {
+      background: var(--accent);
+      border: none;
+      border-radius: 6px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 14px;
+      transition: opacity 0.15s;
+    }
+    button:hover { opacity: 0.85; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── Filters ──────────────────────────────────────────── */
+    .filters {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 24px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+    .filter-label { color: var(--text-muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; }
+
+    .pill-group { display: flex; gap: 6px; flex-wrap: wrap; }
+    .pill {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 4px 12px;
+      transition: all 0.15s;
+      user-select: none;
+    }
+    .pill.active { border-color: var(--accent); color: #fff; background: rgba(99,102,241,0.15); }
+    .pill:hover:not(.active) { border-color: #4b5280; color: var(--text); }
+
+    /* ── Legend ───────────────────────────────────────────── */
+    .legend {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 8px 24px;
+      flex-wrap: wrap;
+    }
+    .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-muted); }
+    .legend-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+
+    /* ── Loading / Error ──────────────────────────────────── */
+    #state {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 300px;
+      color: var(--text-muted);
+      font-size: 14px;
+      gap: 10px;
+    }
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Gantt Container ──────────────────────────────────── */
+    #gantt-wrap {
+      overflow-x: auto;
+      padding: 0 24px 40px;
+    }
+
+    #gantt {
+      min-width: 900px;
+    }
+
+    /* ── Timeline header ──────────────────────────────────── */
+    .timeline-row {
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 88px;   /* header + filters height */
+      z-index: 50;
+      background: var(--bg);
+    }
+    .tl-label-cell {
+      background: var(--bg);
+      border-right: 1px solid var(--border);
+      padding: 8px 12px;
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .tl-track {
+      position: relative;
+      height: 32px;
+      overflow: hidden;
+    }
+    .tl-month {
+      position: absolute;
+      top: 0; bottom: 0;
+      display: flex;
+      align-items: flex-end;
+      padding-bottom: 6px;
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 600;
+      border-left: 1px solid var(--border);
+      padding-left: 6px;
+      white-space: nowrap;
+    }
+    .tl-today-marker {
+      position: absolute;
+      top: 0; bottom: 0;
+      width: 2px;
+      background: var(--today);
+      opacity: 0.8;
+    }
+    .tl-today-label {
+      position: absolute;
+      top: 4px;
+      font-size: 10px;
+      color: var(--today);
+      font-weight: 700;
+      white-space: nowrap;
+      transform: translateX(-50%);
+    }
+
+    /* ── Assignee group ───────────────────────────────────── */
+    .assignee-group {
+      border-bottom: 1px solid var(--border);
+    }
+    .assignee-header {
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      /* offset depends on timeline row height */
+    }
+    .assignee-name-cell {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-right: 1px solid var(--border);
+    }
+    .avatar {
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      background: var(--accent);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 11px; color: #fff;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .assignee-name-cell span { font-weight: 600; font-size: 12px; }
+    .assignee-count {
+      margin-left: auto;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1px 7px;
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+    .assignee-track-bg {
+      position: relative;
+      min-height: 10px;
+    }
+
+    /* ── Ticket row ───────────────────────────────────────── */
+    .ticket-row {
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      border-bottom: 1px solid rgba(46,51,80,0.5);
+      transition: background 0.1s;
+    }
+    .ticket-row:hover { background: rgba(99,102,241,0.04); }
+    .ticket-label-cell {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-right: 1px solid var(--border);
+      min-height: 44px;
+      overflow: hidden;
+    }
+    .ticket-key {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--accent);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .ticket-summary {
+      font-size: 11px;
+      color: var(--text-muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .ticket-track {
+      position: relative;
+      min-height: 44px;
+    }
+
+    /* ── Gantt bar ────────────────────────────────────────── */
+    .gantt-bar {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      height: 22px;
+      border-radius: 5px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      font-size: 10px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.9);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: filter 0.15s, transform 0.15s;
+      min-width: 6px;
+      text-decoration: none;
+    }
+    .gantt-bar:hover {
+      filter: brightness(1.15);
+      transform: translateY(-50%) scaleY(1.08);
+      z-index: 10;
+    }
+
+    /* Status → colour */
+    .bar-open       { background: var(--s-open); }
+    .bar-progress   { background: var(--s-progress); }
+    .bar-review     { background: var(--s-review); }
+    .bar-qa         { background: var(--s-qa); }
+    .bar-rfe        { background: var(--s-rfe); }
+    .bar-done       { background: var(--s-done); opacity: 0.55; }
+    .bar-q1-outline { outline: 2px solid var(--s-q1); outline-offset: -2px; }
+
+    /* Today line on track */
+    .track-today {
+      position: absolute;
+      top: 0; bottom: 0;
+      width: 1px;
+      background: var(--today);
+      opacity: 0.4;
+      pointer-events: none;
+    }
+
+    /* ── Tooltip ──────────────────────────────────────────── */
+    #tooltip {
+      position: fixed;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      pointer-events: none;
+      z-index: 9999;
+      max-width: 320px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      display: none;
+    }
+    #tooltip .tt-key   { font-size: 11px; font-weight: 700; color: var(--accent); margin-bottom: 3px; }
+    #tooltip .tt-title { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 8px; line-height: 1.4; }
+    #tooltip .tt-meta  { font-size: 11px; color: var(--text-muted); display: flex; flex-direction: column; gap: 3px; }
+    #tooltip .tt-row   { display: flex; justify-content: space-between; gap: 16px; }
+    #tooltip .tt-val   { color: var(--text); }
+    .tt-status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+
+    /* ── Empty state ──────────────────────────────────────── */
+    .empty-row {
+      grid-column: 1 / -1;
+      padding: 20px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    /* ── Auto-refresh indicator ───────────────────────────── */
+    .refresh-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #22c55e;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.3; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>ADT <span>Roadmap</span></h1>
+  <div class="badge">Q1 2026 · <b id="ticket-count">—</b> tickets</div>
+  <div class="spacer"></div>
+  <div class="refresh-dot" title="Auto-refreshes every 5 min"></div>
+  <span id="last-updated" style="margin-left:8px;">Loading…</span>
+  <button id="refresh-btn" onclick="loadTickets()">↺ Refresh</button>
+</header>
+
+<div class="filters">
+  <span class="filter-label">Show</span>
+  <div class="pill-group" id="filter-pills">
+    <div class="pill active" data-filter="all">All</div>
+    <div class="pill" data-filter="q1">Q1 2026 only</div>
+    <div class="pill" data-filter="inprogress">In Progress only</div>
+  </div>
+  <span style="margin-left:16px;" class="filter-label">Assignee</span>
+  <div class="pill-group" id="assignee-pills"></div>
+</div>
+
+<div class="legend">
+  <span style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-right:4px;">Status:</span>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--s-open)"></div> Open</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--s-progress)"></div> In Progress</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--s-review)"></div> Code Review</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--s-qa)"></div> QA</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--s-rfe)"></div> Ready For Engineering</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--s-done)"></div> Closed</div>
+  <div class="legend-item" style="margin-left:8px;"><div class="legend-dot" style="background:transparent;border:2px solid var(--s-q1);border-radius:3px;"></div> Q1 label</div>
+</div>
+
+<div id="state"><div class="spinner"></div> Loading tickets from Jira…</div>
+<div id="gantt-wrap" style="display:none">
+  <div id="gantt"></div>
+</div>
+
+<div id="tooltip"></div>
+
+<script>
+// ── Config ────────────────────────────────────────────────
+const API_URL = '/api/tickets';
+const AUTO_REFRESH_MS = 5 * 60 * 1000; // 5 minutes
+
+// ── State ─────────────────────────────────────────────────
+let allTickets = [];
+let activeFilter = 'all';
+let activeAssignees = new Set();
+let timelineStart, timelineEnd;
+let refreshTimer;
+
+// ── Data Loading ──────────────────────────────────────────
+async function loadTickets() {
+  const btn = document.getElementById('refresh-btn');
+  btn.disabled = true;
+  btn.textContent = '↺ Refreshing…';
+
+  try {
+    const res = await fetch(API_URL);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    allTickets = data.tickets || [];
+
+    const ts = new Date(data.meta?.lastUpdated || Date.now());
+    document.getElementById('last-updated').textContent =
+      'Updated ' + ts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    document.getElementById('ticket-count').textContent = allTickets.length;
+
+    buildAssigneePills();
+    renderGantt();
+
+    document.getElementById('state').style.display = 'none';
+    document.getElementById('gantt-wrap').style.display = 'block';
+  } catch (err) {
+    document.getElementById('state').innerHTML =
+      `<span style="color:#f87171">⚠ Failed to load: ${err.message}</span>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '↺ Refresh';
+  }
+}
+
+// ── Filter pills ──────────────────────────────────────────
+document.getElementById('filter-pills').addEventListener('click', e => {
+  const pill = e.target.closest('.pill');
+  if (!pill) return;
+  document.querySelectorAll('#filter-pills .pill').forEach(p => p.classList.remove('active'));
+  pill.classList.add('active');
+  activeFilter = pill.dataset.filter;
+  renderGantt();
+});
+
+function buildAssigneePills() {
+  const assignees = [...new Set(allTickets.map(t => t.assignee))].sort();
+  const container = document.getElementById('assignee-pills');
+  container.innerHTML = '';
+  for (const name of assignees) {
+    const pill = document.createElement('div');
+    pill.className = 'pill active';
+    pill.dataset.assignee = name;
+    pill.textContent = name.split(' ')[0]; // first name only
+    pill.addEventListener('click', () => {
+      pill.classList.toggle('active');
+      if (pill.classList.contains('active')) {
+        activeAssignees.delete(name);
+      } else {
+        activeAssignees.add(name);
+      }
+      renderGantt();
+    });
+    container.appendChild(pill);
+  }
+  activeAssignees.clear();
+}
+
+// ── Gantt rendering ───────────────────────────────────────
+function getFilteredTickets() {
+  return allTickets.filter(t => {
+    // filter by view
+    if (activeFilter === 'q1' && !t.isQ1) return false;
+    if (activeFilter === 'inprogress' && t.status !== 'In Progress') return false;
+    // filter by assignee deselection
+    if (activeAssignees.has(t.assignee)) return false;
+    return true;
+  });
+}
+
+function computeTimeline(tickets) {
+  const today = new Date();
+  let min = new Date(today);
+  min.setDate(min.getDate() - 30); // default: show 30 days back
+  let max = new Date(today);
+  max.setDate(max.getDate() + 45); // default: show 45 days ahead
+
+  for (const t of tickets) {
+    const start = new Date(t.startDate || t.created);
+    if (start < min) min = start;
+    if (t.endDate) {
+      const end = new Date(t.endDate);
+      if (end > max) max = end;
+    }
+  }
+  return { start: min, end: max };
+}
+
+function dateToPct(date, start, end) {
+  const total = end - start;
+  const pos   = new Date(date) - start;
+  return Math.max(0, Math.min(100, (pos / total) * 100));
+}
+
+function statusClass(status) {
+  const s = (status || '').toLowerCase();
+  if (s.includes('progress'))  return 'bar-progress';
+  if (s.includes('review'))    return 'bar-review';
+  if (s === 'qa')              return 'bar-qa';
+  if (s.includes('ready'))     return 'bar-rfe';
+  if (s === 'closed' || s === 'done') return 'bar-done';
+  return 'bar-open';
+}
+
+function daysAgo(dateStr) {
+  const d = Math.floor((Date.now() - new Date(dateStr)) / 86400000);
+  if (d === 0) return 'today';
+  if (d === 1) return '1 day ago';
+  return `${d} days ago`;
+}
+
+function renderGantt() {
+  const tickets = getFilteredTickets();
+  if (tickets.length === 0) {
+    document.getElementById('gantt').innerHTML =
+      '<div class="empty-row" style="padding:40px;text-align:center;color:var(--text-muted)">No tickets match the current filters.</div>';
+    return;
+  }
+
+  const tl = computeTimeline(tickets);
+  timelineStart = tl.start;
+  timelineEnd   = tl.end;
+  const today = new Date();
+  const todayPct = dateToPct(today, timelineStart, timelineEnd);
+
+  // Group by assignee
+  const groups = {};
+  for (const t of tickets) {
+    if (!groups[t.assignee]) groups[t.assignee] = [];
+    groups[t.assignee].push(t);
+  }
+  const sortedAssignees = Object.keys(groups).sort();
+
+  const gantt = document.getElementById('gantt');
+  gantt.innerHTML = '';
+
+  // ── Timeline header ──
+  const tlRow = document.createElement('div');
+  tlRow.className = 'timeline-row';
+  tlRow.innerHTML = `<div class="tl-label-cell">Assignee / Ticket</div><div class="tl-track" id="tl-track"></div>`;
+  gantt.appendChild(tlRow);
+
+  // Populate month markers
+  const track = tlRow.querySelector('#tl-track');
+  const months = getMonthMarkers(timelineStart, timelineEnd);
+  for (const m of months) {
+    const el = document.createElement('div');
+    el.className = 'tl-month';
+    el.style.left = m.pct + '%';
+    el.textContent = m.label;
+    track.appendChild(el);
+  }
+  // Today marker
+  const todayMarker = document.createElement('div');
+  todayMarker.className = 'tl-today-marker';
+  todayMarker.style.left = todayPct + '%';
+  track.appendChild(todayMarker);
+  const todayLabel = document.createElement('div');
+  todayLabel.className = 'tl-today-label';
+  todayLabel.style.left = todayPct + '%';
+  todayLabel.textContent = 'Today';
+  track.appendChild(todayLabel);
+
+  // ── Assignee groups ──
+  for (const assignee of sortedAssignees) {
+    const aTickets = groups[assignee];
+    const group = document.createElement('div');
+    group.className = 'assignee-group';
+
+    // Assignee header
+    const initials = assignee.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+    const avatarHtml = aTickets[0]?.assigneeAvatar
+      ? `<div class="avatar"><img src="${aTickets[0].assigneeAvatar}" alt="${initials}"/></div>`
+      : `<div class="avatar">${initials}</div>`;
+
+    const ah = document.createElement('div');
+    ah.className = 'assignee-header';
+    ah.innerHTML = `
+      <div class="assignee-name-cell">
+        ${avatarHtml}
+        <span>${assignee}</span>
+        <span class="assignee-count">${aTickets.length}</span>
+      </div>
+      <div class="assignee-track-bg"></div>
+    `;
+    group.appendChild(ah);
+
+    // Ticket rows
+    for (const ticket of aTickets) {
+      const startPct = dateToPct(ticket.startDate || ticket.created, timelineStart, timelineEnd);
+      const endDate  = ticket.endDate ? new Date(ticket.endDate) : today;
+      const endPct   = dateToPct(endDate, timelineStart, timelineEnd);
+      const widthPct = Math.max(0.3, endPct - startPct);
+
+      const barClass = statusClass(ticket.status);
+      const q1outline = ticket.isQ1 ? 'bar-q1-outline' : '';
+
+      const row = document.createElement('div');
+      row.className = 'ticket-row';
+      row.innerHTML = `
+        <div class="ticket-label-cell">
+          <span class="ticket-key">${ticket.key}</span>
+          <span class="ticket-summary" title="${escHtml(ticket.summary)}">${escHtml(ticket.summary)}</span>
+        </div>
+        <div class="ticket-track">
+          <div class="track-today" style="left:${todayPct}%"></div>
+          <a href="${ticket.url}" target="_blank" rel="noopener"
+             class="gantt-bar ${barClass} ${q1outline}"
+             style="left:${startPct}%; width:${widthPct}%"
+             data-ticket='${JSON.stringify(ticket).replace(/'/g,"&#39;")}'
+          >${ticket.key}</a>
+        </div>
+      `;
+      group.appendChild(row);
+    }
+
+    gantt.appendChild(group);
+  }
+
+  // Attach tooltip listeners
+  document.querySelectorAll('.gantt-bar').forEach(bar => {
+    bar.addEventListener('mouseenter', showTooltip);
+    bar.addEventListener('mousemove',  moveTooltip);
+    bar.addEventListener('mouseleave', hideTooltip);
+  });
+}
+
+// ── Month markers ─────────────────────────────────────────
+function getMonthMarkers(start, end) {
+  const markers = [];
+  const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+  while (cursor <= end) {
+    const pct = dateToPct(cursor, start, end);
+    markers.push({
+      pct,
+      label: cursor.toLocaleString('default', { month: 'short', year: '2-digit' }),
+    });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+  return markers;
+}
+
+// ── Tooltip ───────────────────────────────────────────────
+const tooltip = document.getElementById('tooltip');
+
+function showTooltip(e) {
+  const data = JSON.parse(e.currentTarget.dataset.ticket.replace(/&#39;/g, "'"));
+  const startStr = new Date(data.startDate || data.created).toLocaleDateString();
+  const endStr   = data.endDate ? new Date(data.endDate).toLocaleDateString() : 'Ongoing';
+  const duration = Math.floor((Date.now() - new Date(data.startDate || data.created)) / 86400000);
+
+  const statusDot = `<span class="tt-status-dot" style="background:${statusColour(data.status)}"></span>`;
+
+  tooltip.innerHTML = `
+    <div class="tt-key">${data.key} ${data.isQ1 ? '<span style="color:var(--s-q1)">● Q1</span>' : ''}</div>
+    <div class="tt-title">${escHtml(data.summary)}</div>
+    <div class="tt-meta">
+      <div class="tt-row"><span>Status</span><span class="tt-val">${statusDot}${data.status}</span></div>
+      <div class="tt-row"><span>Type</span><span class="tt-val">${data.issuetype}</span></div>
+      <div class="tt-row"><span>Priority</span><span class="tt-val">${data.priority}</span></div>
+      <div class="tt-row"><span>Started</span><span class="tt-val">${startStr} (${daysAgo(data.startDate || data.created)})</span></div>
+      <div class="tt-row"><span>Due / End</span><span class="tt-val">${endStr}</span></div>
+      <div class="tt-row"><span>Duration</span><span class="tt-val">${duration} day${duration === 1 ? '' : 's'}</span></div>
+      ${data.sprint ? `<div class="tt-row"><span>Sprint</span><span class="tt-val">${data.sprint}</span></div>` : ''}
+    </div>
+  `;
+  tooltip.style.display = 'block';
+  moveTooltip(e);
+}
+
+function moveTooltip(e) {
+  const pad = 12;
+  const tw = tooltip.offsetWidth;
+  const th = tooltip.offsetHeight;
+  let x = e.clientX + pad;
+  let y = e.clientY + pad;
+  if (x + tw > window.innerWidth  - pad) x = e.clientX - tw - pad;
+  if (y + th > window.innerHeight - pad) y = e.clientY - th - pad;
+  tooltip.style.left = x + 'px';
+  tooltip.style.top  = y + 'px';
+}
+
+function hideTooltip() { tooltip.style.display = 'none'; }
+
+function statusColour(status) {
+  const s = (status || '').toLowerCase();
+  if (s.includes('progress'))  return 'var(--s-progress)';
+  if (s.includes('review'))    return 'var(--s-review)';
+  if (s === 'qa')              return 'var(--s-qa)';
+  if (s.includes('ready'))     return 'var(--s-rfe)';
+  if (s === 'closed' || s === 'done') return 'var(--s-done)';
+  return 'var(--s-open)';
+}
+
+function escHtml(str) {
+  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Auto-refresh ──────────────────────────────────────────
+function scheduleRefresh() {
+  clearTimeout(refreshTimer);
+  refreshTimer = setTimeout(() => {
+    loadTickets().then(scheduleRefresh);
+  }, AUTO_REFRESH_MS);
+}
+
+// ── Boot ──────────────────────────────────────────────────
+loadTickets().then(scheduleRefresh);
+</script>
+</body>
+</html>
