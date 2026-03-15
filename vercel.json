@@ -1,4 +1,17 @@
 {
   "version": 2,
-  "name": "adt-roadmap"
+  "builds": [
+    {
+      "src": "api/tickets.py",
+      "use": "@vercel/python"
+    },
+    {
+      "src": "index.html",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    { "src": "/api/tickets", "dest": "/api/tickets.py" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
 }
